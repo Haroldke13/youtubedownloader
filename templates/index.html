@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .download-form {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .form-title {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        text-align: center;
+        margin-bottom: 40px;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    .form-group {
+        margin-bottom: 30px;
+    }
+    .form-label {
+        display: block;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: var(--text-color);
+    }
+    .form-input {
+        width: 100%;
+        padding: 15px 20px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-color);
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.2);
+        transform: translateY(-2px);
+    }
+    .form-input::placeholder {
+        color: rgba(255, 255, 255, 0.5);
+    }
+    .submit-btn {
+        width: 100%;
+        padding: 18px 30px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, #cc0000 100%);
+        color: white;
+        border: none;
+        border-radius: var(--border-radius);
+        font-size: 1.2rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+    }
+    .submit-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 30px rgba(255, 0, 0, 0.4);
+    }
+    .submit-btn:active {
+        transform: translateY(-1px);
+    }
+    .submit-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+        transition: left 0.6s;
+    }
+    .submit-btn:hover::before {
+        left: 100%;
+    }
+    .form-note {
+        text-align: center;
+        margin-top: 20px;
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+    }
+    @media (max-width: 768px) {
+        .form-title {
+            font-size: 2rem;
+        }
+        .form-input {
+            padding: 12px 16px;
+        }
+        .submit-btn {
+            padding: 15px 25px;
+            font-size: 1.1rem;
+        }
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<div class="download-form">
+    <h1 class="form-title">🚀 Download YouTube Playlist</h1>
+    <form method="POST">
+        <div class="form-group">
+            <label class="form-label" for="url">YouTube Playlist URL</label>
+            <input type="url" id="url" name="url" class="form-input" placeholder="https://www.youtube.com/playlist?list=..." required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="storage">Download Category</label>
+                <select id="storage" name="storage" class="form-input">
+                    <option value="videos">🎬 Videos</option>
+                    <option value="music">🎵 Music</option>
+                    <option value="podcasts">🎙 Podcasts</option>
+                    <option value="tutorials">📚 Tutorials</option>
+                    <option value="general">📁 General</option>
+                </select>
+
+                <small style="opacity: 0.7;">
+                Downloads will be saved to: <br>
+                <strong>{{ downloads_folder }}</strong>
+                </small>
+
+        </div>
+
+        <script>
+            // Get downloads folder from data attribute
+            const downloadsFolderData = document.getElementById('downloads-folder-data');
+            const DOWNLOADS_FOLDER = downloadsFolderData ? downloadsFolderData.getAttribute('data-path') : 'downloads';
+            const DEFAULT_FOLDER_NAME = 'downloads';
+
+            console.log('Downloads folder:', DOWNLOADS_FOLDER);
+
+            // Function to update selected folder
+            function updateSelectedFolder(folderPath) {
+                const select = document.getElementById('storage');
+                const display = document.getElementById('selected-folder-display');
+                const pathSpan = document.getElementById('selected-folder-path');
+
+                // Set the select value to downloads
+                select.value = DEFAULT_FOLDER_NAME;
+
+                // Show the selected folder display
+                if (display && pathSpan) {
+                    pathSpan.textContent = folderPath;
+                    display.style.display = 'block';
+                }
+
+                // Store in localStorage
+                localStorage.setItem('downloadFolder', folderPath);
+                console.log('Selected folder:', folderPath);
+            }
+
+            // Auto-select downloads folder on page load
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('Page loaded, auto-selecting downloads folder...');
+                if (DOWNLOADS_FOLDER) {
+                    updateSelectedFolder(DOWNLOADS_FOLDER);
+                }
+            });
+
+            // Handle choose folder button click
+            document.getElementById('folder-btn').addEventListener('click', function() {
+                console.log('Choose folder button clicked - selecting downloads folder');
+                if (DOWNLOADS_FOLDER) {
+                    updateSelectedFolder(DOWNLOADS_FOLDER);
+                    alert('Downloads folder selected: ' + DOWNLOADS_FOLDER);
+                } else {
+                    alert('Error: Downloads folder not configured');
+                }
+            });
+
+            // Handle form submission - ensure downloads folder is used
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const select = document.getElementById('storage');
+                select.value = DEFAULT_FOLDER_NAME;
+                select.setAttribute('data-full-path', DOWNLOADS_FOLDER);
+                localStorage.setItem('downloadFolder', DOWNLOADS_FOLDER);
+            });
+        </script>
+
+        <button type="submit" class="submit-btn">⚡ Start Download</button>
+    </form>
+    <p class="form-note">Enter a valid YouTube playlist URL and choose a folder name to begin downloading.</p>
+</div>
+{% endblock %}

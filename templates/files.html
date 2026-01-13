@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .files-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    .files-title {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        text-align: center;
+        margin-bottom: 40px;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    .files-stats {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        margin-bottom: 30px;
+        flex-wrap: wrap;
+    }
+    .stat-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        text-align: center;
+        backdrop-filter: blur(10px);
+        box-shadow: var(--shadow);
+        min-width: 120px;
+    }
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--primary-color);
+        margin-bottom: 5px;
+    }
+    .stat-label {
+        color: rgba(255, 255, 255, 0.7);
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .files-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 30px;
+    }
+    .file-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius);
+        padding: 20px;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(10px);
+        box-shadow: var(--shadow);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+    .file-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        border-color: var(--primary-color);
+    }
+    .file-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 0, 0, 0.1), transparent);
+        transition: left 0.5s;
+    }
+    .file-card:hover::before {
+        left: 100%;
+    }
+    .file-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin-bottom: 15px;
+        background: linear-gradient(135deg, var(--primary-color), #cc0000);
+        color: white;
+        box-shadow: 0 4px 15px rgba(255, 0, 0, 0.3);
+    }
+    .file-name {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-color);
+        margin-bottom: 10px;
+        word-break: break-word;
+        line-height: 1.4;
+    }
+    .file-meta {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.6);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .file-type {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: rgba(255, 255, 255, 0.5);
+    }
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.3;
+    }
+    .empty-text {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+    }
+    .empty-subtext {
+        font-size: 0.9rem;
+    }
+    @media (max-width: 768px) {
+        .files-title {
+            font-size: 2rem;
+        }
+        .files-grid {
+            grid-template-columns: 1fr;
+        }
+        .files-stats {
+            gap: 15px;
+        }
+        .stat-card {
+            min-width: 100px;
+            padding: 15px;
+        }
+    }
+</style>
+
+<div class="files-container">
+    <h1 class="files-title">📁 Downloaded Files</h1>
+
+    {% if files %}
+        <div class="files-stats">
+            <div class="stat-card">
+                <div class="stat-number">{{ files|length }}</div>
+                <div class="stat-label">Files</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">📥</div>
+                <div class="stat-label">Downloaded</div>
+            </div>
+        </div>
+
+        <div class="files-grid">
+            {% for f in files %}
+                <div class="file-card">
+                    <div class="file-icon">
+                        {% if f.lower().endswith(('.mp3', '.wav', '.flac', '.aac')) %}🎵
+                        {% elif f.lower().endswith(('.mp4', '.avi', '.mkv', '.mov')) %}🎬
+                        {% elif f.lower().endswith(('.jpg', '.png', '.gif', '.webp')) %}🖼️
+                        {% else %}📄{% endif %}
+                    </div>
+                    <div class="file-name">{{ f }}</div>
+                    <div class="file-meta">
+                        <span class="file-type">
+                            {% if f.lower().endswith(('.mp3', '.wav', '.flac', '.aac')) %}Audio
+                            {% elif f.lower().endswith(('.mp4', '.avi', '.mkv', '.mov')) %}Video
+                            {% elif f.lower().endswith(('.jpg', '.png', '.gif', '.webp')) %}Image
+                            {% else %}File{% endif %}
+                        </span>
+                        <span>📎</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📂</div>
+            <div class="empty-text">No files downloaded yet</div>
+            <div class="empty-subtext">Start downloading playlists to see your files here</div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
