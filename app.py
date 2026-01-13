@@ -7,16 +7,23 @@ app = Flask(__name__)
 app.secret_key = "dkjfhkjhfd28yr98fdh9s8y9y23897duegwd7893ye892u3d2ueu9328py998dh9p8whdui9a8hdy98ey7w8e8fy74328edh7823r2ged8khdih9y3249887r2y49877df2t87e87td78wt78t87ct8d7if7y278yd7fy97d8ype298y89yp39yrq4983gf7er8fgcpuid;bgcjkzxehuiywiuehiuri"
 
 # Allow user to set download directory via environment variable
-import platform
+import platform, re, sys 
+import pathlib
 
-# Detect if running on Android
-IS_ANDROID = platform.system() == "Linux" and os.path.exists("/storage/emulated/0/Download")
+# Better Android detection (check several common mount points)
+ANDROID_DOWNLOAD_PATHS = [
+    "/storage/emulated/0/Download",
+    "/sdcard/Download",
+    "/storage/sdcard0/Download",
+]
+IS_ANDROID = any(os.path.exists(p) for p in ANDROID_DOWNLOAD_PATHS)
 
-# Set download folder depending on platform
-BASE_DOWNLOAD_DIR = (
-    "/storage/emulated/0/Download/YTDownloads" if IS_ANDROID 
-    else os.path.abspath(os.environ.get('DOWNLOAD_DIR', os.path.expanduser('~/Downloads/YTDownloads')))
-)
+# Set download folder depending on platform or env var
+_env_dl = os.environ.get('DOWNLOAD_DIR')
+if _env_dl:
+    BASE_DOWNLOAD_DIR = os.path.abspath(_env_dl)
+else:
+    BASE_DOWNLOAD_DIR = "/storage/emulated/0/Download/YTDownloads" if IS_ANDROID else os.path.abspath(os.path.expanduser('~/Downloads/YTDownloads'))
 
 if not os.path.exists(BASE_DOWNLOAD_DIR):
     os.makedirs(BASE_DOWNLOAD_DIR, exist_ok=True)
@@ -66,40 +73,8 @@ def progress_hook(d):
 
 
 
+
 """@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        url = request.form.get("url")
-        category = request.form.get("storage") or "general"
-
-        if not url:
-            flash("Playlist URL is required")
-            return redirect(url_for("index"))
-
-        storage_path = os.path.join(BASE_DOWNLOAD_DIR, category)
-        os.makedirs(storage_path, exist_ok=True)
-
-
-
-
-        threading.Thread(
-            target=download_playlist,
-            args=(url, storage_path),
-            daemon=True
-        ).start()
-
-        return redirect(url_for("progress"))
-
-    return render_template(
-        "index.html",
-        downloads_folder=BASE_DOWNLOAD_DIR
-    )
-"""
-
-
-
-
-@app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         url = request.form.get("url")
@@ -126,6 +101,42 @@ def index():
         flash("A download is already running")
 
     return render_template("index.html", downloads_folder=BASE_DOWNLOAD_DIR)
+"""
+
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        url = request.form.get("url")
+        # allow either select (storage) or a custom folder input (custom_folder)
+        folder = request.form.get("storage") or request.form.get("custom_folder") or "general"
+
+        # sanitize: remove suspicious chars and ensure basename only
+        folder = re.sub(r'[^A-Za-z0-9 _-]', '', folder).strip() or "general"
+        folder = os.path.basename(folder)
+
+        if not url:
+            flash("Please enter a URL")
+            return redirect("/")
+
+        storage_path = os.path.join(BASE_DOWNLOAD_DIR, folder)
+        os.makedirs(storage_path, exist_ok=True)
+
+        is_playlist = "playlist" in url.lower()
+
+        if not download_status["running"]:
+            thread = threading.Thread(
+                target=download_playlist,
+                args=(url, storage_path, is_playlist),
+                daemon=True
+            )
+            thread.start()
+            return redirect("/progress")
+
+        flash("A download is already running")
+
+    return render_template("index.html", downloads_folder=BASE_DOWNLOAD_DIR)
+
 
 
 @app.route("/progress")
