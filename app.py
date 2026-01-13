@@ -116,11 +116,22 @@ def index():
         if custom_folder:
             # If user provided an absolute path, only allow it on Android and only under known mounts
             if os.path.isabs(custom_folder):
-                allowed_android_roots = ["/storage/emulated/0", "/sdcard", "/storage/sdcard0"]
-                if IS_ANDROID and any(custom_folder.startswith(root) for root in allowed_android_roots):
+                # Broaden known Android mount points and accept any /storage path
+                allowed_android_roots = [
+                    "/storage/emulated/0",
+                    "/sdcard",
+                    "/storage/sdcard0",
+                    "/storage/self/primary",
+                    "/mnt/sdcard",
+                    "/mnt/media_rw",
+                    "/mnt/shell/emulated",
+                ]
+                mounts_present = any(os.path.exists(root) for root in allowed_android_roots)
+                # Accept absolute paths if a storage mount exists and the path is under /storage or one of the known roots
+                if mounts_present and (custom_folder.startswith("/storage") or any(custom_folder.startswith(root) for root in allowed_android_roots)):
                     storage_path = os.path.abspath(custom_folder)
                 else:
-                    flash("Absolute paths are only allowed when running on Android and must be under the device storage mount.")
+                    flash("Absolute paths are only allowed when running on Android and must be under device storage mounts.")
                     return redirect("/")
             else:
                 # treat as relative folder name under BASE_DOWNLOAD_DIR
