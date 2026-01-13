@@ -1,6 +1,8 @@
 import os
 import threading
-from flask import Flask, logging, render_template, request, redirect, url_for, flash
+import uuid
+import glob
+from flask import Flask, jsonify, logging, render_template, request, redirect, send_file, url_for, flash
 import yt_dlp
 
 app = Flask(__name__)
@@ -27,6 +29,10 @@ else:
 
 if not os.path.exists(BASE_DOWNLOAD_DIR):
     os.makedirs(BASE_DOWNLOAD_DIR, exist_ok=True)
+
+# Temporary folder for single-file downloads (Method 2)
+TEMP_DIR = os.path.join(BASE_DOWNLOAD_DIR, "temp_downloads")
+os.makedirs(TEMP_DIR, exist_ok=True)
 
 # Simple global progress state 
 download_status = {
@@ -166,6 +172,61 @@ def index():
 
     return render_template("index.html", downloads_folder=BASE_DOWNLOAD_DIR)
 
+@app.route("/download", methods=["POST"])
+def download():
+    # Accept JSON or form-encoded requests
+    data = request.get_json(silent=True)
+    if not data:
+        data = request.form or request.values
+
+    url = None
+    if isinstance(data, dict):
+        url = data.get("url")
+    else:
+        url = data.get("url") if data else None
+
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
+
+    try:
+        file_path = download_video(url)
+    except Exception as e:
+        return jsonify({"error": f"Download failed: {e}"}), 500
+
+    # Serve the file as attachment
+    return send_file(
+        file_path,
+        as_attachment=True,
+        download_name=os.path.basename(file_path)
+    )
+
+
+def download_video(url):
+    """Download a single video to a unique temp file and return the filepath.
+
+    Uses `TEMP_DIR` inside the app's base downloads folder so Android devices
+    will store files under the allowed storage area.
+    """
+    uid = str(uuid.uuid4())
+    base_path = os.path.join(TEMP_DIR, uid)
+    outtmpl = base_path + ".%(ext)s"
+
+    ydl_opts = {
+        "outtmpl": outtmpl,
+        "format": "best[ext=mp4]/best",
+        "quiet": True,
+        "noplaylist": True,
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+
+    # Find the created file (yt-dlp will pick the final extension)
+    matches = glob.glob(base_path + ".*")
+    if not matches:
+        raise RuntimeError("yt-dlp did not produce an output file")
+
+    return matches[0]
 
 
 @app.route("/progress")

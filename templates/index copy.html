@@ -110,24 +110,32 @@
             <input type="url" id="url" name="url" class="form-input" placeholder="https://www.youtube.com/playlist?list=..." required>
         </div>
 
-        
-        <script>
-                async function download() {
-                const url = document.getElementById("url").value;
+        <div class="form-group">
+            <label class="form-label" for="storage">Download Category</label>
+            <select id="storage" name="storage" class="form-input">
+                <option value="videos">🎬 Videos</option>
+                <option value="music">🎵 Music</option>
+                <option value="podcasts">🎙 Podcasts</option>
+                <option value="tutorials">📚 Tutorials</option>
+                <option value="general">📁 General</option>
+            </select>
 
-                const response = await fetch("/download", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ url })
-                });
+            <div style="margin-top:12px;">
+                <label class="form-label" for="custom_folder">Or enter a folder (relative name or absolute Android path)</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="custom_folder" name="custom_folder" class="form-input" placeholder="e.g. MyPlaylist or /storage/emulated/0/Download/MyFolder">
+                    <button type="button" id="use-default-btn" class="submit-btn" style="width:auto; padding:10px 14px; font-size:0.95rem;">Use default</button>
+                </div>
+                <small style="opacity:0.7; display:block; margin-top:6px;">If you enter an absolute path, it is only allowed on Android and must be under device storage mounts.</small>
+            </div>
 
-                const blob = await response.blob();
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
-                a.download = "video.mp4";
-                a.click();
-                }
-        </script>
+            <div id="downloads-folder-data" data-path="{{ downloads_folder }}" style="display:none;"></div>
+            <small style="opacity: 0.7; display:block; margin-top:10px;">
+                Downloads base: <strong>{{ downloads_folder }}</strong>
+            </small>
+
+        </div>
+
         <script>
             // Get downloads folder from data attribute
             const downloadsFolderData = document.getElementById('downloads-folder-data');
@@ -146,7 +154,7 @@
             });
         </script>
 
-        <button onclick="download()" type="submit" class="submit-btn">⚡ Start Download</button>
+        <button type="submit" class="submit-btn">⚡ Start Download</button>
     </form>
     <p class="form-note">Enter a valid YouTube playlist URL and choose a folder name to begin downloading.</p>
 </div>
