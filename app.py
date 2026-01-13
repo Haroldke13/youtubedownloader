@@ -18,7 +18,7 @@ download_status = {
     "path": "",
 }
 
-def download_playlist(url, storage_path):
+def download_playlist(url, storage_path, is_playlist=False):
     global download_status
     download_status["running"] = True
     download_status["message"] = "Starting download..."
@@ -27,13 +27,13 @@ def download_playlist(url, storage_path):
     ydl_opts = {
         "outtmpl": os.path.join(
             storage_path,
-            "%(playlist_title)s/%(playlist_index)s - %(title)s.%(ext)s"
+             "%(playlist_title)s/%(playlist_index)s - %(title)s.%(ext)s" if is_playlist else "%(title)s.%(ext)s"
         ),
         "format": "bestvideo[height<=480]+bestaudio/best[height<=480]/best[height<=480]",
         "merge_output_format": "mp4",
         "cookies.txt": "cookies.txt",
         "ignoreerrors": True,
-        "noplaylist": False,
+        "noplaylist": not is_playlist,
         "download_archive": "downloaded.txt",
         "progress_hooks": [progress_hook],
     }
@@ -55,44 +55,8 @@ def progress_hook(d):
         download_status["message"] = "Processing video..."
 
 
+
 """@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        url = request.form.get("url")
-        folder = request.form.get("storage")
-
-        if not url or not folder:
-            flash("All fields are required")
-            return redirect(url_for("index"))
-
-        # Check if running in Electron (allows absolute paths)
-        is_electron = os.environ.get('ELECTRON_APP') == 'true'
-        
-        if is_electron and os.path.isabs(folder):
-            # Use absolute path directly
-            storage_path = folder
-        else:
-            # Use relative path within downloads directory
-            storage_path = os.path.join(BASE_DOWNLOAD_DIR, folder)
-        
-        os.makedirs(storage_path, exist_ok=True)
-
-        if not download_status["running"]:
-            thread = threading.Thread(
-                target=download_playlist,
-                args=(url, storage_path),
-                daemon=True,
-            )
-            thread.start()
-            return redirect(url_for("progress"))
-
-        flash("A download is already running")
-
-    return render_template("index.html", downloads_folder=BASE_DOWNLOAD_DIR)
-
-"""
-
-@app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         url = request.form.get("url")
@@ -104,6 +68,9 @@ def index():
 
         storage_path = os.path.join(BASE_DOWNLOAD_DIR, category)
         os.makedirs(storage_path, exist_ok=True)
+
+
+
 
         threading.Thread(
             target=download_playlist,
@@ -117,6 +84,38 @@ def index():
         "index.html",
         downloads_folder=BASE_DOWNLOAD_DIR
     )
+"""
+
+
+
+
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        url = request.form.get("url")
+        folder = request.form.get("storage") or "general"
+
+        if not url:
+            flash("Please enter a URL")
+            return redirect("/")
+
+        storage_path = os.path.join(BASE_DOWNLOAD_DIR, folder)
+        os.makedirs(storage_path, exist_ok=True)
+
+        is_playlist = "playlist" in url.lower()
+
+        if not download_status["running"]:
+            thread = threading.Thread(
+                target=download_playlist,
+                args=(url, storage_path, is_playlist),
+                daemon=True
+            )
+            thread.start()
+            return redirect("/progress")
+
+        flash("A download is already running")
+
+    return render_template("index.html", downloads_folder=BASE_DOWNLOAD_DIR)
 
 
 @app.route("/progress")
