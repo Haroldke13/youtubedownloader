@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .progress-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .progress-title {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        text-align: center;
+        margin-bottom: 40px;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+    .status-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius);
+        padding: 30px;
+        margin-bottom: 30px;
+        backdrop-filter: blur(10px);
+        box-shadow: var(--shadow);
+    }
+    .status-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    .status-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        transform: translateX(5px);
+    }
+    .status-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 20px;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    .status-icon.running {
+        background: linear-gradient(135deg, #00ff00, #00cc00);
+        color: white;
+        animation: pulse 2s infinite;
+    }
+    .status-icon.idle {
+        background: linear-gradient(135deg, #666, #999);
+        color: white;
+    }
+    .status-icon.path {
+        background: linear-gradient(135deg, #007bff, #0056b3);
+        color: white;
+    }
+    .status-label {
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .status-value {
+        font-size: 1.1rem;
+        color: var(--text-color);
+        word-break: break-all;
+    }
+    .refresh-indicator {
+        text-align: center;
+        color: rgba(255, 255, 255, 0.7);
+        font-style: italic;
+        animation: fadeInOut 2s infinite;
+    }
+    .progress-bar-container {
+        margin-top: 30px;
+        position: relative;
+    }
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary-color), #ff4444);
+        border-radius: 4px;
+        width: 0%;
+        animation: progressAnimation 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+    @keyframes fadeInOut {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 1; }
+    }
+    @keyframes progressAnimation {
+        0% { width: 0%; }
+        50% { width: 70%; }
+        100% { width: 100%; }
+    }
+    @media (max-width: 768px) {
+        .progress-title {
+            font-size: 2rem;
+        }
+        .status-card {
+            padding: 20px;
+        }
+        .status-item {
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+        }
+        .status-icon {
+            margin-bottom: 10px;
+            margin-right: 0;
+        }
+    }
+</style>
+
+<div class="progress-container">
+    <h1 class="progress-title">📊 Download Progress</h1>
+
+    <div class="status-card">
+        <div class="status-item">
+            <div class="status-icon {{ 'running' if status.running else 'idle' }}">
+                {% if status.running %}⚡{% else %}⏸️{% endif %}
+            </div>
+            <div>
+                <div class="status-label">Status</div>
+                <div class="status-value">{{ status.message }}</div>
+            </div>
+        </div>
+
+        <div class="status-item">
+            <div class="status-icon path">📁</div>
+            <div>
+                <div class="status-label">Storage Path</div>
+                <div class="status-value">{{ status.path }}</div>
+            </div>
+        </div>
+
+        {% if status.running %}
+            <div class="progress-bar-container">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+            </div>
+            <meta http-equiv="refresh" content="5">
+            <p class="refresh-indicator">🔄 Auto-refreshing every 5 seconds...</p>
+        {% else %}
+            <p class="refresh-indicator">⏸️ Download idle - no active processes</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
