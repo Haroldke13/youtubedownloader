@@ -7,7 +7,17 @@ app = Flask(__name__)
 app.secret_key = "dkjfhkjhfd28yr98fdh9s8y9y23897duegwd7893ye892u3d2ueu9328py998dh9p8whdui9a8hdy98ey7w8e8fy74328edh7823r2ged8khdih9y3249887r2y49877df2t87e87td78wt78t87ct8d7if7y278yd7fy97d8ype298y89yp39yrq4983gf7er8fgcpuid;bgcjkzxehuiywiuehiuri"
 
 # Allow user to set download directory via environment variable
-BASE_DOWNLOAD_DIR = os.path.abspath(os.environ.get('DOWNLOAD_DIR', os.path.expanduser('~/Downloads')))
+import platform
+
+# Detect if running on Android
+IS_ANDROID = platform.system() == "Linux" and os.path.exists("/storage/emulated/0/Download")
+
+# Set download folder depending on platform
+BASE_DOWNLOAD_DIR = (
+    "/storage/emulated/0/Download/YTDownloads" if IS_ANDROID 
+    else os.path.abspath(os.environ.get('DOWNLOAD_DIR', os.path.expanduser('~/Downloads/YTDownloads')))
+)
+
 if not os.path.exists(BASE_DOWNLOAD_DIR):
     os.makedirs(BASE_DOWNLOAD_DIR, exist_ok=True)
 
