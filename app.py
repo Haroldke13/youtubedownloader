@@ -109,17 +109,35 @@ def index():
     if request.method == "POST":
         url = request.form.get("url")
         # allow either select (storage) or a custom folder input (custom_folder)
-        folder = request.form.get("storage") or request.form.get("custom_folder") or "general"
+        storage_select = request.form.get("storage")
+        custom_folder = (request.form.get("custom_folder") or "").strip()
 
-        # sanitize: remove suspicious chars and ensure basename only
-        folder = re.sub(r'[^A-Za-z0-9 _-]', '', folder).strip() or "general"
-        folder = os.path.basename(folder)
+        # Determine storage_path safely
+        if custom_folder:
+            # If user provided an absolute path, only allow it on Android and only under known mounts
+            if os.path.isabs(custom_folder):
+                allowed_android_roots = ["/storage/emulated/0", "/sdcard", "/storage/sdcard0"]
+                if IS_ANDROID and any(custom_folder.startswith(root) for root in allowed_android_roots):
+                    storage_path = os.path.abspath(custom_folder)
+                else:
+                    flash("Absolute paths are only allowed when running on Android and must be under the device storage mount.")
+                    return redirect("/")
+            else:
+                # treat as relative folder name under BASE_DOWNLOAD_DIR
+                folder_name = re.sub(r'[^A-Za-z0-9 _-]', '', custom_folder).strip() or "general"
+                folder_name = os.path.basename(folder_name)
+                storage_path = os.path.join(BASE_DOWNLOAD_DIR, folder_name)
+        else:
+            # use selected category (safe relative name)
+            folder_name = storage_select or "general"
+            folder_name = re.sub(r'[^A-Za-z0-9 _-]', '', folder_name).strip() or "general"
+            folder_name = os.path.basename(folder_name)
+            storage_path = os.path.join(BASE_DOWNLOAD_DIR, folder_name)
 
         if not url:
             flash("Please enter a URL")
             return redirect("/")
 
-        storage_path = os.path.join(BASE_DOWNLOAD_DIR, folder)
         os.makedirs(storage_path, exist_ok=True)
 
         is_playlist = "playlist" in url.lower()

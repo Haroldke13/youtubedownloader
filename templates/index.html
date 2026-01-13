@@ -112,74 +112,45 @@
 
         <div class="form-group">
             <label class="form-label" for="storage">Download Category</label>
-                <select id="storage" name="storage" class="form-input">
-                    <option value="videos">🎬 Videos</option>
-                    <option value="music">🎵 Music</option>
-                    <option value="podcasts">🎙 Podcasts</option>
-                    <option value="tutorials">📚 Tutorials</option>
-                    <option value="general">📁 General</option>
-                </select>
+            <select id="storage" name="storage" class="form-input">
+                <option value="videos">🎬 Videos</option>
+                <option value="music">🎵 Music</option>
+                <option value="podcasts">🎙 Podcasts</option>
+                <option value="tutorials">📚 Tutorials</option>
+                <option value="general">📁 General</option>
+            </select>
 
-                <small style="opacity: 0.7;">
-                Downloads will be saved to: <br>
-                <strong>{{ downloads_folder }}</strong>
-                </small>
+            <div style="margin-top:12px;">
+                <label class="form-label" for="custom_folder">Or enter a folder (relative name or absolute Android path)</label>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <input type="text" id="custom_folder" name="custom_folder" class="form-input" placeholder="e.g. MyPlaylist or /storage/emulated/0/Download/MyFolder">
+                    <button type="button" id="use-default-btn" class="submit-btn" style="width:auto; padding:10px 14px; font-size:0.95rem;">Use default</button>
+                </div>
+                <small style="opacity:0.7; display:block; margin-top:6px;">If you enter an absolute path, it is only allowed on Android and must be under device storage mounts.</small>
+            </div>
+
+            <div id="downloads-folder-data" data-path="{{ downloads_folder }}" style="display:none;"></div>
+            <small style="opacity: 0.7; display:block; margin-top:10px;">
+                Downloads base: <strong>{{ downloads_folder }}</strong>
+            </small>
 
         </div>
 
         <script>
             // Get downloads folder from data attribute
             const downloadsFolderData = document.getElementById('downloads-folder-data');
-            const DOWNLOADS_FOLDER = downloadsFolderData ? downloadsFolderData.getAttribute('data-path') : 'downloads';
-            const DEFAULT_FOLDER_NAME = 'downloads';
+            const DOWNLOADS_FOLDER = downloadsFolderData ? downloadsFolderData.getAttribute('data-path') : '';
 
-            console.log('Downloads folder:', DOWNLOADS_FOLDER);
-
-            // Function to update selected folder
-            function updateSelectedFolder(folderPath) {
-                const select = document.getElementById('storage');
-                const display = document.getElementById('selected-folder-display');
-                const pathSpan = document.getElementById('selected-folder-path');
-
-                // Set the select value to downloads
-                select.value = DEFAULT_FOLDER_NAME;
-
-                // Show the selected folder display
-                if (display && pathSpan) {
-                    pathSpan.textContent = folderPath;
-                    display.style.display = 'block';
-                }
-
-                // Store in localStorage
-                localStorage.setItem('downloadFolder', folderPath);
-                console.log('Selected folder:', folderPath);
-            }
-
-            // Auto-select downloads folder on page load
+            // Fill custom input with default when requested
             document.addEventListener('DOMContentLoaded', function() {
-                console.log('Page loaded, auto-selecting downloads folder...');
-                if (DOWNLOADS_FOLDER) {
-                    updateSelectedFolder(DOWNLOADS_FOLDER);
+                const useBtn = document.getElementById('use-default-btn');
+                const customInput = document.getElementById('custom_folder');
+                if (useBtn && customInput && DOWNLOADS_FOLDER) {
+                    useBtn.addEventListener('click', function() {
+                        customInput.value = DOWNLOADS_FOLDER;
+                        alert('Default downloads path filled');
+                    });
                 }
-            });
-
-            // Handle choose folder button click
-            document.getElementById('folder-btn').addEventListener('click', function() {
-                console.log('Choose folder button clicked - selecting downloads folder');
-                if (DOWNLOADS_FOLDER) {
-                    updateSelectedFolder(DOWNLOADS_FOLDER);
-                    alert('Downloads folder selected: ' + DOWNLOADS_FOLDER);
-                } else {
-                    alert('Error: Downloads folder not configured');
-                }
-            });
-
-            // Handle form submission - ensure downloads folder is used
-            document.querySelector('form').addEventListener('submit', function(e) {
-                const select = document.getElementById('storage');
-                select.value = DEFAULT_FOLDER_NAME;
-                select.setAttribute('data-full-path', DOWNLOADS_FOLDER);
-                localStorage.setItem('downloadFolder', DOWNLOADS_FOLDER);
             });
         </script>
 
