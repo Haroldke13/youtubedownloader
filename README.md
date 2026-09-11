@@ -1,122 +1,154 @@
-# YouTube Downloader - Cross-Platform App
+# youtubedownloader
 
-A desktop and web application for downloading YouTube playlists with intelligent folder picker support.
+Flask web UI over yt-dlp for downloading YouTube playlists and single videos to a server-side folder.
 
-## Features
+## What it does
 
-- 🎵 Download YouTube playlists
-- 📁 **Auto folder selection**: Uses app's downloads folder (`./downloads/`)
-- 🎨 Modern web UI
-- ⚡ Fast downloads with yt-dlp
-- 📱 Cross-platform (Windows, macOS, Linux, Web, Mobile)
-- 💾 Consistent download location
+One file, `app.py` (265 lines), serves four routes:
 
-## Installation
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/` | GET, POST | Form to submit a URL; POST starts a background download and redirects to `/progress` |
+| `/progress` | GET | Renders the current global download status |
+| `/files` | GET | Lists every file found under the download directory (`os.walk`) |
+| `/download` | POST | Separate JSON/form endpoint: downloads one video and returns it as an attachment |
 
-1. **Install Node.js** (if not already installed)
-   ```bash
-   # On Ubuntu/Debian
-   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-   sudo apt-get install -y nodejs
+Two different download paths exist:
 
-   # On macOS
-   brew install node
+- **Playlist / background path** (`download_playlist`, used by `POST /`).
+  Runs `yt_dlp.YoutubeDL` on a daemon thread with
+  `format="bestvideo[height<=480]+bestaudio/best[height<=480]/best[height<=480]"`
+  and `merge_output_format="mp4"` — so it deliberately caps quality at 480p.
+  `ignoreerrors` is on, and `download_archive="downloaded.txt"` (relative to the
+  process working directory) means already-downloaded video IDs are skipped on
+  later runs. If the submitted URL contains the substring `playlist`, output
+  goes to `<playlist_title>/<index> - <title>.<ext>`, otherwise to
+  `<title>.<ext>`. A yt-dlp `progress_hook` writes percentage strings into a
+  single module-level `download_status` dict, so **only one download can run at
+  a time** and there is no per-job tracking.
+- **Single-video path** (`download_video`, used by `POST /download`).
+  Downloads `best[ext=mp4]/best` to a UUID-named file under
+  `<base>/temp_downloads/`, then `send_file`s it back to the browser as an
+  attachment. The temp file is never deleted.
 
-   # On Windows: Download from https://nodejs.org/
-   ```
+Destination folder resolution:
 
-2. **Install Python dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+- `DOWNLOAD_DIR` env var wins if set.
+- Otherwise, if any of `/storage/emulated/0/Download`, `/sdcard/Download` or
+  `/storage/sdcard0/Download` exists, the app assumes Android and uses
+  `/storage/emulated/0/Download/YTDownloads`.
+- Otherwise `~/Downloads/YTDownloads`.
 
-3. **Install Electron dependencies**
-   ```bash
-   npm install
-   ```
+Within that base, the POST handler picks a subfolder from a `storage` select or
+a `custom_folder` text field, stripping everything outside `[A-Za-z0-9 _-]` and
+taking `os.path.basename`. Absolute custom paths are accepted only when an
+Android storage mount is present and the path is under one of the known mount
+roots; otherwise the request is rejected.
 
-## Running the App
+## Tech stack
 
-### Development Mode
+Python 3, Flask, yt-dlp. `requirements.txt` is three unpinned lines:
+
+```
+Flask
+yt-dlp
+gunicorn
+```
+
+`gunicorn` is listed but nothing in the repository invokes it — there is no
+Procfile, Dockerfile, start script, or CI config.
+
+Templates are Jinja with inline CSS/JS: `base.html` (nav + styling),
+`index.html`, `progress.html`, `files.html`. There is also `index copy.html`, an
+unused older copy of the form. `static/img/` holds one "harold IT SOLUTIONS"
+logo used as the favicon.
+
+ffmpeg is required in practice: the playlist path requests separate video and
+audio streams and sets `merge_output_format="mp4"`, which yt-dlp can only do by
+shelling out to ffmpeg.
+
+## Setup and running
+
 ```bash
-npm run dev
+cd youtubedownloader
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+sudo apt install ffmpeg        # needed to merge video+audio
+python app.py                  # http://0.0.0.0:5000
 ```
 
-### Production Build
+Environment variables:
+
+| Variable | Effect | Default |
+| --- | --- | --- |
+| `DOWNLOAD_DIR` | Base download directory | Android path if detected, else `~/Downloads/YTDownloads` |
+| `HOST` | Bind address | `0.0.0.0` |
+| `PORT` | Bind port | `5000` |
+| `DEBUG` | `true` enables Flask debug mode | `False` |
+| `ELECTRON_APP` | Read in `/files` but both branches are identical, so it currently does nothing | unset |
+
+Because `gunicorn` is in the requirements, presumably the intent was:
+
 ```bash
-npm run build
+gunicorn --workers 1 --bind 0.0.0.0:5000 app:app
 ```
 
-### Run Built App
-```bash
-npm start
-```
+Keep it at one worker — download state is a module-level dict. TODO: verify that
+this is how the author deploys it.
 
-## How It Works
+## Status
 
-- **Electron Main Process**: Manages the application window and native system dialogs
-- **Flask Backend**: Handles YouTube downloads and serves the web UI
-- **Web UI**: Modern interface with native folder picker integration
+Working prototype with several loose ends. Single commit, 2026-01-13.
 
-## Folder Picker Implementation
+Verified here:
 
-The app intelligently adapts the folder picker based on your environment:
+- The app imports cleanly against installed Flask and yt-dlp, registers all four
+  routes, and `/`, `/progress` and `/files` all return 200. `POST /download`
+  with no URL correctly returns `{"error": "No URL provided"}` with a 400.
+- The committed `downloads/` folder and `downloaded.txt` are evidence that
+  playlist downloads have really run at some point.
 
-### 🖥️ **Desktop App (Electron)**
-```javascript
-const { dialog } = require("electron");
-const result = await dialog.showOpenDialog({
-  properties: ["openDirectory"]
-});
-const folderPath = result.filePaths[0];
-```
-- ✅ Full file system access
-- ✅ Native OS dialogs
-- ✅ Exact local paths
-- ✅ No browser sandbox
+Confirmed bugs and dead code:
 
-### 🌐 **Web Browsers (Chrome/Edge)**
-```html
-<input type="file" webkitdirectory>
-```
-- ✅ HTML5 directory picker
-- ✅ Works in modern browsers
-- ⚠️ Limited to browser-accessible folders
+- **The previous README described a different application.** It documented an
+  Electron desktop app with `npm install`, `npm run dev`, `npm run build` and an
+  "Electron Main Process" with native folder dialogs. There is no `package.json`,
+  no Node source, and no Electron dependency anywhere in the repository. The only
+  remaining trace is the inert `ELECTRON_APP` check in `/files`. This README
+  replaces those claims.
+- **`cookies.txt` is never used.** `ydl_opts` contains `"cookies.txt": "cookies.txt"`,
+  but yt-dlp's option is `cookiefile`; the unknown key is carried in the params
+  dict and ignored, so `cookiefile` stays `None`. Confirmed by inspecting
+  `YoutubeDL.params` directly. The committed `cookies.txt` is also 0 bytes.
+  Age-restricted or sign-in-required videos will therefore fail.
+- **The submit button fires two conflicting actions.** In `templates/index.html`
+  the button is both `onclick="download()"` (JSON `fetch` to `/download`) and
+  `type="submit"` (normal form POST to `/`), so a click triggers the single-video
+  endpoint and the playlist endpoint at once.
+- **The folder picker UI is missing from the live template.** `index.html`'s
+  inline script looks up `#custom_folder` and `#use-default-btn`, but those
+  elements exist only in the unused `index copy.html`. As shipped, the form
+  posts only `url`, so every download lands in the `general` subfolder and the
+  whole `storage`/`custom_folder` branch in `app.py` is unreachable.
+- **The startup error handler would itself crash.** `app.py` does
+  `from flask import ... logging ...` and then calls `logging.error(...)` — but
+  `flask.logging` has no `error` attribute, so if `app.run()` ever raised, the
+  handler would raise `AttributeError` instead of logging. Confirmed by
+  inspecting the module.
+- The `POST /download` temp files under `temp_downloads/` accumulate forever;
+  nothing cleans them up.
+- No authentication on any route, and `/files` walks and lists the entire
+  download tree.
+- **Downloaded media is committed to the repository.** `downloads/` holds 41 MB
+  of copyrighted commercial music videos (`.mp4`, `.webm.part`) pulled from
+  YouTube, plus `downloaded.txt`, the yt-dlp archive of the video IDs that were
+  fetched. `__pycache__/app.cpython-312.pyc` is also tracked. None of this
+  belongs in a public repository; `downloads/.keep` suggests the intent was to
+  track the empty folder only.
 
-### 📱 **Mobile Browsers**
-```
-Manual text input with local storage
-```
-- ✅ Works on all mobile devices
-- ✅ Remembers your choices
-- ✅ Custom path entry
-- ⚠️ Manual path input required
+Not verified here:
 
-## Troubleshooting Folder Picker
+- An actual download against YouTube. TODO: verify the playlist path, the 480p
+  cap, and the ffmpeg merge end to end.
 
-### Getting "Folder picker is only available in the desktop app"?
-
-This message should no longer appear with the cross-platform implementation. If you still see it:
-
-1. **Clear browser cache** - Hard refresh (Ctrl+F5) or clear cache
-2. **Check browser console** (F12) for debug information
-3. **Button indicators**:
-   - 🖥️ **"Choose Folder (Native)"** = Electron desktop app
-   - 🌐 **"Choose Folder (Browser)"** = Web browser with HTML5 support
-   - 📱 **"Choose Folder (Manual)"** = Mobile or limited browser
-
-### Environment Detection
-
-The app automatically detects your environment:
-- **Electron**: `window.electronAPI` exists
-- **Mobile**: User agent contains mobile keywords
-- **Webkit Support**: `'webkitdirectory' in document.createElement('input')`
-
-### Testing
-
-Run the test script to verify functionality:
-```bash
-./test-folder-picker.sh
-```
-
-This will start the Flask app and provide testing instructions.
+LICENSE: GNU General Public License v3.
