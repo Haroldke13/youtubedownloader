@@ -1,196 +1,838 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-    .files-container {
-        max-width: 1200px;
-        margin: 0 auto;
+  .fb {
+    --fb-bg: transparent;
+    --fb-surface: color-mix(in srgb, #ffffff 4%, transparent);
+    --fb-surface-strong: color-mix(in srgb, #ffffff 7%, transparent);
+    --fb-line: color-mix(in srgb, #ffffff 12%, transparent);
+    --fb-text: #f4f4f5;
+    --fb-muted: color-mix(in srgb, #f4f4f5 58%, transparent);
+    --fb-accent: var(--primary-color, #ff0000);
+    --fb-audio: #22d3ee;
+    --fb-video: #a78bfa;
+    --fb-ok: #34d399;
+    --fb-radius: 14px;
+    --fb-gap: clamp(0.75rem, 1.5vw, 1.25rem);
+    color: var(--fb-text);
+    container-type: inline-size;
+  }
+
+  /* ---------- header ---------- */
+  .fb-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .fb-title {
+    font-size: clamp(1.6rem, 1.2rem + 2vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 0;
+  }
+  .fb-sub { color: var(--fb-muted); font-size: 0.9rem; margin-top: 0.35rem; }
+  .fb-sub code {
+    background: var(--fb-surface);
+    border: 1px solid var(--fb-line);
+    border-radius: 6px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.82rem;
+  }
+
+  .fb-stats { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .fb-stat {
+    background: var(--fb-surface);
+    border: 1px solid var(--fb-line);
+    border-radius: 10px;
+    padding: 0.5rem 0.85rem;
+    min-width: 5.5rem;
+  }
+  .fb-stat b { display: block; font-size: 1.25rem; line-height: 1.2; }
+  .fb-stat span {
+    color: var(--fb-muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  /* ---------- live job banner ---------- */
+  .fb-job {
+    display: grid;
+    gap: 0.6rem;
+    background: color-mix(in srgb, var(--fb-accent) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--fb-accent) 35%, transparent);
+    border-radius: var(--fb-radius);
+    padding: 1rem 1.15rem;
+    margin-bottom: 1.25rem;
+  }
+  .fb-job[hidden] { display: none; }
+  .fb-job-top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .fb-job-msg { font-weight: 600; display: flex; align-items: center; gap: 0.6rem; }
+  .fb-job-file { color: var(--fb-muted); font-size: 0.85rem; word-break: break-word; }
+  .fb-bar {
+    height: 8px;
+    border-radius: 99px;
+    background: var(--fb-surface-strong);
+    overflow: hidden;
+  }
+  .fb-bar i {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--fb-accent), #ff8a00);
+    transition: width 0.4s ease;
+  }
+  .fb-bar.indeterminate i {
+    width: 35% !important;
+    animation: fb-slide 1.4s ease-in-out infinite;
+  }
+  @keyframes fb-slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(320%); }
+  }
+  .fb-pulse {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--fb-accent);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--fb-accent) 70%, transparent);
+    animation: fb-pulse 1.8s infinite;
+  }
+  @keyframes fb-pulse {
+    70% { box-shadow: 0 0 0 10px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+
+  /* ---------- toolbar ---------- */
+  .fb-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.85rem 0;
+    margin-bottom: 1rem;
+    background: color-mix(in srgb, #0f0f0f 88%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--fb-line);
+  }
+  .fb-row { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+  .fb-search {
+    flex: 1 1 16rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--fb-surface);
+    border: 1px solid var(--fb-line);
+    border-radius: 10px;
+    padding: 0.55rem 0.75rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .fb-search:focus-within {
+    border-color: var(--fb-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--fb-accent) 25%, transparent);
+  }
+  .fb-search input {
+    flex: 1;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    outline: none;
+    min-width: 0;
+  }
+  .fb-kbd {
+    border: 1px solid var(--fb-line);
+    border-radius: 5px;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.7rem;
+    color: var(--fb-muted);
+  }
+
+  .fb-chip, .fb-btn, .fb-select {
+    background: var(--fb-surface);
+    border: 1px solid var(--fb-line);
+    border-radius: 999px;
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.45rem 0.85rem;
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  }
+  .fb-select { border-radius: 10px; }
+  .fb-chip:hover, .fb-btn:hover, .fb-select:hover { background: var(--fb-surface-strong); }
+  .fb-chip[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--fb-accent) 22%, transparent);
+    border-color: color-mix(in srgb, var(--fb-accent) 55%, transparent);
+    color: #fff;
+  }
+  .fb-chip:focus-visible, .fb-btn:focus-visible, .fb-select:focus-visible,
+  .fb-card:focus-visible, .fb-icon-btn:focus-visible {
+    outline: 2px solid var(--fb-accent);
+    outline-offset: 2px;
+  }
+  .fb-group { display: flex; gap: 0.35rem; align-items: center; }
+  .fb-label { color: var(--fb-muted); font-size: 0.78rem; }
+  .fb-num {
+    width: 4.5rem;
+    background: var(--fb-surface);
+    border: 1px solid var(--fb-line);
+    border-radius: 8px;
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  /* ---------- results ---------- */
+  .fb-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    color: var(--fb-muted);
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+  .fb-list { display: grid; gap: var(--fb-gap); }
+  .fb-list[data-view="grid"] {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  }
+  .fb-list[data-view="list"] { grid-template-columns: 1fr; }
+
+  .fb-card {
+    position: relative;
+    display: grid;
+    gap: 0.6rem;
+    background: var(--fb-surface);
+    border: 1px solid var(--fb-line);
+    border-radius: var(--fb-radius);
+    padding: 0.9rem;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 11rem;
+    transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  }
+  .fb-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--fb-accent) 45%, transparent);
+    background: var(--fb-surface-strong);
+  }
+  .fb-list[data-view="list"] .fb-card {
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.9rem;
+    contain-intrinsic-size: auto 4rem;
+  }
+  .fb-list[data-view="list"] .fb-card .fb-actions { grid-column: auto; }
+
+  .fb-thumb {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 10px;
+    font-size: 1.3rem;
+    background: color-mix(in srgb, var(--fb-video) 18%, transparent);
+  }
+  .fb-card[data-kind="audio"] .fb-thumb {
+    background: color-mix(in srgb, var(--fb-audio) 18%, transparent);
+  }
+  .fb-name {
+    font-weight: 600;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .fb-path {
+    color: var(--fb-muted);
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+    margin-top: 0.15rem;
+  }
+  .fb-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+  .fb-tag {
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--fb-muted);
+    background: var(--fb-surface-strong);
+    border-radius: 6px;
+    padding: 0.15rem 0.4rem;
+  }
+  .fb-bpm {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    font-size: 0.72rem;
+    color: #0b0b0b;
+    border-radius: 6px;
+    padding: 0.18rem 0.45rem;
+    background: var(--fb-ok);
+  }
+  .fb-actions { display: flex; gap: 0.35rem; }
+  .fb-icon-btn {
+    display: grid;
+    place-items: center;
+    width: 2rem; height: 2rem;
+    border-radius: 8px;
+    border: 1px solid var(--fb-line);
+    background: var(--fb-surface-strong);
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.95rem;
+    text-decoration: none;
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .fb-icon-btn:hover { background: color-mix(in srgb, var(--fb-accent) 30%, transparent); transform: translateY(-1px); }
+
+  .fb-empty {
+    display: grid;
+    gap: 0.5rem;
+    justify-items: center;
+    text-align: center;
+    padding: clamp(2rem, 8vw, 4rem) 1rem;
+    color: var(--fb-muted);
+    border: 1px dashed var(--fb-line);
+    border-radius: var(--fb-radius);
+  }
+  .fb-empty b { color: var(--fb-text); font-size: 1.05rem; }
+
+  /* ---------- player ---------- */
+  .fb-player {
+    width: min(56rem, 92vw);
+    border: 1px solid var(--fb-line);
+    border-radius: var(--fb-radius);
+    background: #121212;
+    color: var(--fb-text);
+    padding: 0;
+  }
+  .fb-player::backdrop { background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(4px); }
+  .fb-player-head {
+    display: flex;
+    gap: 1rem;
+    align-items: start;
+    justify-content: space-between;
+    padding: 1rem 1.15rem;
+    border-bottom: 1px solid var(--fb-line);
+  }
+  .fb-player-body { padding: 1.15rem; display: grid; gap: 0.9rem; }
+  .fb-player video, .fb-player audio { width: 100%; border-radius: 10px; background: #000; }
+  .fb-player video { max-height: min(60vh, 32rem); }
+
+  .fb-toast {
+    position: fixed;
+    inset-block-end: 1.25rem;
+    inset-inline: 0;
+    margin-inline: auto;
+    width: fit-content;
+    background: #1c1c1c;
+    border: 1px solid var(--fb-line);
+    border-radius: 999px;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.85rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transform: translateY(0.75rem);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 30;
+  }
+  .fb-toast.show { opacity: 1; transform: translateY(0); }
+
+  @container (max-width: 34rem) {
+    .fb-head { flex-direction: column; align-items: stretch; }
+    .fb-stat { flex: 1 1 5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fb *, .fb *::before, .fb *::after {
+      animation-duration: 0.001ms !important;
+      transition-duration: 0.001ms !important;
     }
-    .files-title {
-        font-size: 2.5rem;
-        color: var(--primary-color);
-        text-align: center;
-        margin-bottom: 40px;
-        font-weight: 700;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  @media (prefers-color-scheme: light) {
+    body { background: #f4f4f5 !important; color: #18181b; }
+    .card { background: #ffffff !important; border-color: rgba(0,0,0,0.08) !important; }
+    header { border-bottom-color: rgba(0,0,0,0.1) !important; }
+    nav a { color: #18181b; }
+    .fb {
+      --fb-surface: color-mix(in srgb, #18181b 4%, transparent);
+      --fb-surface-strong: color-mix(in srgb, #18181b 8%, transparent);
+      --fb-line: color-mix(in srgb, #18181b 14%, transparent);
+      --fb-text: #18181b;
+      --fb-muted: color-mix(in srgb, #18181b 60%, transparent);
     }
-    .files-stats {
-        display: flex;
-        justify-content: center;
-        gap: 30px;
-        margin-bottom: 30px;
-        flex-wrap: wrap;
-    }
-    .stat-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: var(--border-radius);
-        padding: 20px;
-        text-align: center;
-        backdrop-filter: blur(10px);
-        box-shadow: var(--shadow);
-        min-width: 120px;
-    }
-    .stat-number {
-        font-size: 2rem;
-        font-weight: bold;
-        color: var(--primary-color);
-        margin-bottom: 5px;
-    }
-    .stat-label {
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    .files-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 20px;
-        margin-top: 30px;
-    }
-    .file-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: var(--border-radius);
-        padding: 20px;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-        box-shadow: var(--shadow);
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
-    }
-    .file-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-        border-color: var(--primary-color);
-    }
-    .file-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 0, 0, 0.1), transparent);
-        transition: left 0.5s;
-    }
-    .file-card:hover::before {
-        left: 100%;
-    }
-    .file-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        margin-bottom: 15px;
-        background: linear-gradient(135deg, var(--primary-color), #cc0000);
-        color: white;
-        box-shadow: 0 4px 15px rgba(255, 0, 0, 0.3);
-    }
-    .file-name {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--text-color);
-        margin-bottom: 10px;
-        word-break: break-word;
-        line-height: 1.4;
-    }
-    .file-meta {
-        font-size: 0.85rem;
-        color: rgba(255, 255, 255, 0.6);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .file-type {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: rgba(255, 255, 255, 0.5);
-    }
-    .empty-icon {
-        font-size: 4rem;
-        margin-bottom: 20px;
-        opacity: 0.3;
-    }
-    .empty-text {
-        font-size: 1.2rem;
-        margin-bottom: 10px;
-    }
-    .empty-subtext {
-        font-size: 0.9rem;
-    }
-    @media (max-width: 768px) {
-        .files-title {
-            font-size: 2rem;
-        }
-        .files-grid {
-            grid-template-columns: 1fr;
-        }
-        .files-stats {
-            gap: 15px;
-        }
-        .stat-card {
-            min-width: 100px;
-            padding: 15px;
-        }
-    }
+    .fb-toolbar { background: color-mix(in srgb, #ffffff 88%, transparent); }
+    .fb-player { background: #ffffff; }
+    .fb-toast { background: #ffffff; color: #18181b; }
+  }
 </style>
 
-<div class="files-container">
-    <h1 class="files-title">📁 Downloaded Files</h1>
+<div class="fb">
+  <div class="fb-head">
+    <div>
+      <h1 class="fb-title">Library</h1>
+      <p class="fb-sub">
+        BPM-scanned downloads from <code>dlallbpm.py</code> in
+        <code>{{ bpm_folder }}</code>, plus this app's own downloads.
+      </p>
+    </div>
+    <div class="fb-stats">
+      <div class="fb-stat"><b>{{ library.stats.count }}</b><span>Files</span></div>
+      <div class="fb-stat"><b id="fb-size">—</b><span>Total</span></div>
+      <div class="fb-stat"><b>{{ library.stats.scanned }}</b><span>BPM tagged</span></div>
+      <div class="fb-stat"><b>{{ library.stats.audio }}/{{ library.stats.video }}</b><span>Audio/Video</span></div>
+    </div>
+  </div>
 
-    {% if files %}
-        <div class="files-stats">
-            <div class="stat-card">
-                <div class="stat-number">{{ files|length }}</div>
-                <div class="stat-label">Files</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number">📥</div>
-                <div class="stat-label">Downloaded</div>
-            </div>
-        </div>
+  <section class="fb-job" id="fb-job" hidden aria-live="polite">
+    <div class="fb-job-top">
+      <div class="fb-job-msg"><span class="fb-pulse"></span><span id="fb-job-msg">Working…</span></div>
+      <div class="fb-row">
+        <span class="fb-label" id="fb-job-stat"></span>
+        <a class="fb-btn" href="/progress">Details</a>
+        <button class="fb-btn" type="button" id="fb-job-stop">Stop</button>
+      </div>
+    </div>
+    <div class="fb-bar" id="fb-job-bar"><i></i></div>
+    <div class="fb-job-file" id="fb-job-file"></div>
+  </section>
 
-        <div class="files-grid">
-            {% for f in files %}
-                <div class="file-card">
-                    <div class="file-icon">
-                        {% if f.lower().endswith(('.mp3', '.wav', '.flac', '.aac')) %}🎵
-                        {% elif f.lower().endswith(('.mp4', '.avi', '.mkv', '.mov')) %}🎬
-                        {% elif f.lower().endswith(('.jpg', '.png', '.gif', '.webp')) %}🖼️
-                        {% else %}📄{% endif %}
-                    </div>
-                    <div class="file-name">{{ f }}</div>
-                    <div class="file-meta">
-                        <span class="file-type">
-                            {% if f.lower().endswith(('.mp3', '.wav', '.flac', '.aac')) %}Audio
-                            {% elif f.lower().endswith(('.mp4', '.avi', '.mkv', '.mov')) %}Video
-                            {% elif f.lower().endswith(('.jpg', '.png', '.gif', '.webp')) %}Image
-                            {% else %}File{% endif %}
-                        </span>
-                        <span>📎</span>
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <div class="empty-state">
-            <div class="empty-icon">📂</div>
-            <div class="empty-text">No files downloaded yet</div>
-            <div class="empty-subtext">Start downloading playlists to see your files here</div>
-        </div>
-    {% endif %}
+  <div class="fb-toolbar" role="search">
+    <div class="fb-row">
+      <label class="fb-search">
+        <span aria-hidden="true">🔎</span>
+        <input id="fb-q" type="search" placeholder="Search titles, folders, BPM…"
+               autocomplete="off" aria-label="Search files">
+        <kbd class="fb-kbd">/</kbd>
+      </label>
+      <select class="fb-select" id="fb-sort" aria-label="Sort by">
+        <option value="new">Newest first</option>
+        <option value="old">Oldest first</option>
+        <option value="name">Name A–Z</option>
+        <option value="size">Largest first</option>
+        <option value="bpm-asc">BPM: slow → fast</option>
+        <option value="bpm-desc">BPM: fast → slow</option>
+      </select>
+      <div class="fb-group" role="group" aria-label="View">
+        <button class="fb-chip" type="button" id="fb-view-grid" aria-pressed="true">▦ Grid</button>
+        <button class="fb-chip" type="button" id="fb-view-list" aria-pressed="false">☰ List</button>
+      </div>
+      <button class="fb-btn" type="button" id="fb-refresh" title="Rescan the folders">↻ Rescan</button>
+    </div>
+
+    <div class="fb-row">
+      <div class="fb-group" role="group" aria-label="Library">
+        <button class="fb-chip" type="button" data-root="" aria-pressed="true">All sources</button>
+        {% for root in library.roots %}
+        <button class="fb-chip" type="button" data-root="{{ root.key }}" aria-pressed="false"
+                title="{{ root.path }} — {{ root.hint }}">{{ root.label }}</button>
+        {% endfor %}
+      </div>
+      <div class="fb-group" role="group" aria-label="Type">
+        <button class="fb-chip" type="button" data-kind="" aria-pressed="true">All types</button>
+        <button class="fb-chip" type="button" data-kind="audio" aria-pressed="false">🎵 Audio</button>
+        <button class="fb-chip" type="button" data-kind="video" aria-pressed="false">🎬 Video</button>
+      </div>
+      <div class="fb-group">
+        <span class="fb-label">BPM</span>
+        <input class="fb-num" id="fb-bpm-min" type="number" min="0" max="300" placeholder="min" aria-label="Minimum BPM">
+        <span class="fb-label">–</span>
+        <input class="fb-num" id="fb-bpm-max" type="number" min="0" max="300" placeholder="max" aria-label="Maximum BPM">
+        <button class="fb-chip" type="button" id="fb-bpm-only" aria-pressed="false">Tagged only</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="fb-meta-row">
+    <span id="fb-count" aria-live="polite">—</span>
+    <button class="fb-btn" type="button" id="fb-clear" hidden>Clear filters</button>
+  </div>
+
+  <div class="fb-list" id="fb-list" data-view="grid"></div>
+
+  <div class="fb-empty" id="fb-empty" hidden>
+    <b id="fb-empty-title">Nothing here yet</b>
+    <span id="fb-empty-text">Start a BPM download and finished tracks land here automatically.</span>
+    <a class="fb-btn" href="/">Start a download</a>
+  </div>
 </div>
+
+<dialog class="fb-player" id="fb-player">
+  <div class="fb-player-head">
+    <div>
+      <strong id="fb-player-title">—</strong>
+      <div class="fb-path" id="fb-player-path"></div>
+    </div>
+    <button class="fb-icon-btn" type="button" id="fb-player-close" aria-label="Close player">✕</button>
+  </div>
+  <div class="fb-player-body">
+    <div id="fb-player-slot"></div>
+    <div class="fb-row">
+      <a class="fb-btn" id="fb-player-dl" href="#" download>⬇ Download</a>
+      <button class="fb-btn" type="button" id="fb-player-copy">⧉ Copy path</button>
+      <span class="fb-label" id="fb-player-meta"></span>
+    </div>
+  </div>
+</dialog>
+
+<div class="fb-toast" id="fb-toast" role="status" aria-live="polite"></div>
+
+<script type="application/json" id="fb-data">{{ library.entries | tojson }}</script>
+<script type="application/json" id="fb-job-data">{{ status | tojson }}</script>
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const PREFS_KEY = "ytdl.files.prefs.v1";
+
+  let entries = JSON.parse($("fb-data").textContent || "[]");
+  let job = JSON.parse($("fb-job-data").textContent || "{}");
+
+  const prefs = Object.assign(
+    { view: "grid", sort: "new", root: "", kind: "", bpmMin: "", bpmMax: "", bpmOnly: false },
+    (() => { try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch { return {}; } })()
+  );
+  const savePrefs = () => {
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* private mode */ }
+  };
+
+  const nf = new Intl.NumberFormat();
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+  const UNITS = [["year", 31536000], ["month", 2592000], ["week", 604800],
+                 ["day", 86400], ["hour", 3600], ["minute", 60]];
+
+  const bytes = (n) => {
+    if (!n) return "0 B";
+    const units = ["B", "KB", "MB", "GB", "TB"];
+    const i = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
+    const value = n / Math.pow(1024, i);
+    return `${value >= 10 || i === 0 ? Math.round(value) : value.toFixed(1)} ${units[i]}`;
+  };
+  const ago = (ts) => {
+    const diff = (ts * 1000 - Date.now()) / 1000;
+    for (const [unit, secs] of UNITS) {
+      if (Math.abs(diff) >= secs) return rtf.format(Math.round(diff / secs), unit);
+    }
+    return rtf.format(Math.round(diff), "second");
+  };
+  const mediaUrl = (item, dl) =>
+    `/media/${encodeURIComponent(item.root)}/${item.rel.split("/").map(encodeURIComponent).join("/")}${dl ? "?dl=1" : ""}`;
+
+  // Tempo colour: slow = cool, fast = hot. Keeps the badge readable in both themes.
+  const bpmColor = (bpm) => `hsl(${Math.max(0, Math.min(200, 200 - (bpm - 60) * 1.45))} 85% 62%)`;
+
+  let toastTimer;
+  const toast = (text) => {
+    const el = $("fb-toast");
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+  };
+
+  // ---------- filtering ----------
+  let query = "";
+  const matches = (item) => {
+    if (prefs.root && item.root !== prefs.root) return false;
+    if (prefs.kind && item.kind !== prefs.kind) return false;
+    if (prefs.bpmOnly && item.bpm === null) return false;
+    const min = parseInt(prefs.bpmMin, 10), max = parseInt(prefs.bpmMax, 10);
+    if (!Number.isNaN(min) || !Number.isNaN(max)) {
+      if (item.bpm === null) return false;
+      if (!Number.isNaN(min) && item.bpm < min) return false;
+      if (!Number.isNaN(max) && item.bpm > max) return false;
+    }
+    if (!query) return true;
+    return query.split(/\s+/).every((term) =>
+      `${item.title} ${item.folder} ${item.ext} ${item.bpm ?? ""}`.toLowerCase().includes(term));
+  };
+
+  const SORTS = {
+    new: (a, b) => b.mtime - a.mtime,
+    old: (a, b) => a.mtime - b.mtime,
+    name: (a, b) => a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: "base" }),
+    size: (a, b) => b.size - a.size,
+    "bpm-asc": (a, b) => (a.bpm ?? 1e9) - (b.bpm ?? 1e9) || a.title.localeCompare(b.title),
+    "bpm-desc": (a, b) => (b.bpm ?? -1) - (a.bpm ?? -1) || a.title.localeCompare(b.title),
+  };
+
+  const filtersActive = () =>
+    Boolean(query || prefs.root || prefs.kind || prefs.bpmOnly || prefs.bpmMin || prefs.bpmMax);
+
+  // ---------- rendering ----------
+  const card = (item) => {
+    const el = document.createElement("article");
+    el.className = "fb-card";
+    el.dataset.kind = item.kind;
+    el.tabIndex = 0;
+    el.setAttribute("role", "button");
+    el.setAttribute("aria-label", `Play ${item.title}`);
+
+    const thumb = document.createElement("div");
+    thumb.className = "fb-thumb";
+    thumb.textContent = item.kind === "audio" ? "🎵" : "🎬";
+
+    const main = document.createElement("div");
+    const name = document.createElement("div");
+    name.className = "fb-name";
+    name.textContent = item.title;
+    main.append(name);
+    if (item.folder) {
+      const path = document.createElement("div");
+      path.className = "fb-path";
+      path.textContent = item.folder.replaceAll("/", " › ");
+      main.append(path);
+    }
+
+    const tags = document.createElement("div");
+    tags.className = "fb-tags";
+    if (item.bpm !== null) {
+      const bpm = document.createElement("span");
+      bpm.className = "fb-bpm";
+      bpm.style.background = bpmColor(item.bpm);
+      bpm.textContent = `${item.bpm} BPM`;
+      tags.append(bpm);
+    }
+    for (const text of [item.ext, bytes(item.size), ago(item.mtime)]) {
+      const tag = document.createElement("span");
+      tag.className = "fb-tag";
+      tag.textContent = text;
+      tags.append(tag);
+    }
+    main.append(tags);
+
+    const actions = document.createElement("div");
+    actions.className = "fb-actions";
+    const dl = document.createElement("a");
+    dl.className = "fb-icon-btn";
+    dl.href = mediaUrl(item, true);
+    dl.setAttribute("download", "");
+    dl.title = "Download";
+    dl.textContent = "⬇";
+    dl.addEventListener("click", (event) => event.stopPropagation());
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "fb-icon-btn";
+    copy.title = "Copy file path";
+    copy.textContent = "⧉";
+    copy.addEventListener("click", (event) => {
+      event.stopPropagation();
+      navigator.clipboard?.writeText(item.rel).then(
+        () => toast("Path copied"),
+        () => toast("Could not copy"));
+    });
+    actions.append(dl, copy);
+
+    el.append(thumb, main, actions);
+    el.addEventListener("click", () => openPlayer(item));
+    el.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openPlayer(item); }
+    });
+    return el;
+  };
+
+  const render = () => {
+    const list = $("fb-list");
+    const shown = entries.filter(matches).sort(SORTS[prefs.sort] || SORTS.new);
+
+    const frag = document.createDocumentFragment();
+    shown.forEach((item) => frag.append(card(item)));
+    list.replaceChildren(frag);
+    list.dataset.view = prefs.view;
+
+    const total = shown.reduce((sum, item) => sum + item.size, 0);
+    $("fb-count").textContent = shown.length === entries.length
+      ? `${nf.format(entries.length)} file${entries.length === 1 ? "" : "s"} · ${bytes(total)}`
+      : `${nf.format(shown.length)} of ${nf.format(entries.length)} · ${bytes(total)}`;
+    $("fb-clear").hidden = !filtersActive();
+
+    const empty = $("fb-empty");
+    empty.hidden = shown.length > 0;
+    if (!shown.length) {
+      const filtered = entries.length > 0;
+      $("fb-empty-title").textContent = filtered ? "No files match those filters" : "Nothing here yet";
+      $("fb-empty-text").textContent = filtered
+        ? "Try a wider BPM range, another source, or clear the search."
+        : "Start a BPM download and finished tracks land here automatically.";
+    }
+    $("fb-size").textContent = bytes(entries.reduce((sum, item) => sum + item.size, 0));
+  };
+
+  // ---------- player ----------
+  const dialog = $("fb-player");
+  const openPlayer = (item) => {
+    $("fb-player-title").textContent = item.title;
+    $("fb-player-path").textContent = `${item.root === "bpm" ? "BPM library" : "Downloads"} › ${item.rel}`;
+    $("fb-player-meta").textContent =
+      `${item.ext.toUpperCase()} · ${bytes(item.size)} · ${item.bpm !== null ? item.bpm + " BPM" : "no BPM tag"}`;
+    $("fb-player-dl").href = mediaUrl(item, true);
+    $("fb-player-copy").onclick = () => navigator.clipboard?.writeText(item.rel).then(
+      () => toast("Path copied"), () => toast("Could not copy"));
+
+    const media = document.createElement(item.kind === "audio" ? "audio" : "video");
+    media.src = mediaUrl(item, false);
+    media.controls = true;
+    media.autoplay = true;
+    media.preload = "metadata";
+    $("fb-player-slot").replaceChildren(media);
+    dialog.showModal();
+  };
+  const closePlayer = () => {
+    $("fb-player-slot").replaceChildren();
+    if (dialog.open) dialog.close();
+  };
+  $("fb-player-close").addEventListener("click", closePlayer);
+  dialog.addEventListener("close", () => $("fb-player-slot").replaceChildren());
+  dialog.addEventListener("click", (event) => { if (event.target === dialog) closePlayer(); });
+
+  // ---------- controls ----------
+  const debounce = (fn, ms) => {
+    let timer;
+    return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+  };
+
+  $("fb-q").addEventListener("input", debounce((event) => {
+    query = event.target.value.trim().toLowerCase();
+    render();
+  }, 120));
+
+  $("fb-sort").value = prefs.sort;
+  $("fb-sort").addEventListener("change", (event) => {
+    prefs.sort = event.target.value; savePrefs(); render();
+  });
+
+  const setView = (view) => {
+    prefs.view = view; savePrefs();
+    $("fb-view-grid").setAttribute("aria-pressed", String(view === "grid"));
+    $("fb-view-list").setAttribute("aria-pressed", String(view === "list"));
+    $("fb-list").dataset.view = view;
+  };
+  $("fb-view-grid").addEventListener("click", () => setView("grid"));
+  $("fb-view-list").addEventListener("click", () => setView("list"));
+
+  const bindChips = (attr, key) => {
+    const chips = [...document.querySelectorAll(`[data-${attr}]`)];
+    const sync = () => chips.forEach((chip) =>
+      chip.setAttribute("aria-pressed", String((chip.dataset[attr] || "") === (prefs[key] || ""))));
+    chips.forEach((chip) => chip.addEventListener("click", () => {
+      prefs[key] = chip.dataset[attr] || ""; savePrefs(); sync(); render();
+    }));
+    sync();
+  };
+  bindChips("root", "root");
+  bindChips("kind", "kind");
+
+  $("fb-bpm-min").value = prefs.bpmMin;
+  $("fb-bpm-max").value = prefs.bpmMax;
+  $("fb-bpm-only").setAttribute("aria-pressed", String(prefs.bpmOnly));
+  const onBpm = debounce(() => {
+    prefs.bpmMin = $("fb-bpm-min").value;
+    prefs.bpmMax = $("fb-bpm-max").value;
+    savePrefs(); render();
+  }, 200);
+  $("fb-bpm-min").addEventListener("input", onBpm);
+  $("fb-bpm-max").addEventListener("input", onBpm);
+  $("fb-bpm-only").addEventListener("click", (event) => {
+    prefs.bpmOnly = !prefs.bpmOnly;
+    event.currentTarget.setAttribute("aria-pressed", String(prefs.bpmOnly));
+    savePrefs(); render();
+  });
+
+  $("fb-clear").addEventListener("click", () => {
+    Object.assign(prefs, { root: "", kind: "", bpmMin: "", bpmMax: "", bpmOnly: false });
+    query = "";
+    $("fb-q").value = "";
+    $("fb-bpm-min").value = "";
+    $("fb-bpm-max").value = "";
+    $("fb-bpm-only").setAttribute("aria-pressed", "false");
+    document.querySelectorAll("[data-root], [data-kind]").forEach((chip) =>
+      chip.setAttribute("aria-pressed", String(!(chip.dataset.root || chip.dataset.kind))));
+    savePrefs(); render();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName);
+    if (event.key === "/" && !typing) { event.preventDefault(); $("fb-q").focus(); }
+    if (event.key === "Escape" && !dialog.open && document.activeElement === $("fb-q")) {
+      $("fb-q").value = ""; query = ""; render();
+    }
+  });
+
+  // ---------- live refresh ----------
+  const refresh = async (announce) => {
+    try {
+      const response = await fetch("/api/files", { headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(response.status);
+      const data = await response.json();
+      const before = entries.length;
+      entries = data.entries;
+      job = data.bpm;
+      render();
+      paintJob();
+      if (announce) toast(entries.length === before ? "Up to date" : `${entries.length - before} new file(s)`);
+    } catch {
+      if (announce) toast("Could not rescan");
+    }
+  };
+  $("fb-refresh").addEventListener("click", () => refresh(true));
+
+  const paintJob = () => {
+    const box = $("fb-job");
+    if (!job || (!job.running && job.phase !== "error")) { box.hidden = true; return; }
+    box.hidden = false;
+    $("fb-job-msg").textContent = job.message || "Working…";
+    $("fb-job-stat").textContent = job.percent != null ? `${job.percent}%` : (job.phase || "");
+    $("fb-job-file").textContent = [job.current_file, job.speed, job.eta && `ETA ${job.eta}`]
+      .filter(Boolean).join("  ·  ");
+    const bar = $("fb-job-bar");
+    bar.classList.toggle("indeterminate", job.running && job.percent == null);
+    bar.firstElementChild.style.width = `${job.percent ?? 0}%`;
+    $("fb-job-stop").hidden = !job.running;
+  };
+
+  $("fb-job-stop").addEventListener("click", async () => {
+    $("fb-job-stop").disabled = true;
+    try {
+      await fetch("/cancel", { method: "POST", headers: { Accept: "application/json" } });
+      toast("Stopping — keeping what finished");
+    } finally {
+      setTimeout(() => { $("fb-job-stop").disabled = false; }, 1500);
+    }
+  });
+
+  let wasRunning = Boolean(job.running);
+  const poll = async () => {
+    if (document.hidden) return;
+    try {
+      const response = await fetch("/api/progress", { headers: { Accept: "application/json" } });
+      if (!response.ok) return;
+      job = (await response.json()).bpm;
+      paintJob();
+      if (wasRunning && !job.running) { wasRunning = false; refresh(false); toast(job.message || "Download finished"); }
+      if (job.running) wasRunning = true;
+    } catch { /* the app may be restarting */ }
+  };
+  setInterval(poll, 2500);
+
+  setView(prefs.view);
+  render();
+  paintJob();
+})();
+</script>
 {% endblock %}

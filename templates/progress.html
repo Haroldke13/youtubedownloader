@@ -1,167 +1,227 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-    .progress-container {
-        max-width: 800px;
-        margin: 0 auto;
+  .pg {
+    --pg-surface: color-mix(in srgb, #ffffff 4%, transparent);
+    --pg-line: color-mix(in srgb, #ffffff 12%, transparent);
+    --pg-muted: color-mix(in srgb, #ffffff 58%, transparent);
+    --pg-accent: var(--primary-color, #ff0000);
+    display: grid;
+    gap: 1.25rem;
+  }
+  .pg-title {
+    font-size: clamp(1.6rem, 1.2rem + 2vw, 2.3rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .pg-head { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; }
+  .pg-panel {
+    background: var(--pg-surface);
+    border: 1px solid var(--pg-line);
+    border-radius: 14px;
+    padding: 1.15rem;
+    display: grid;
+    gap: 0.9rem;
+  }
+  .pg-state { display: flex; align-items: center; gap: 0.75rem; font-weight: 600; }
+  .pg-dot {
+    width: 0.65rem; height: 0.65rem; border-radius: 50%;
+    background: var(--pg-muted); flex: none;
+  }
+  .pg-dot.on {
+    background: var(--pg-accent);
+    animation: pg-pulse 1.8s ease-out infinite;
+  }
+  .pg-dot.done { background: #34d399; }
+  .pg-dot.err { background: #f87171; }
+  @keyframes pg-pulse {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--pg-accent) 70%, transparent); }
+    70% { box-shadow: 0 0 0 9px transparent; }
+    100% { box-shadow: 0 0 0 0 transparent; }
+  }
+  .pg-bar { height: 10px; border-radius: 99px; background: color-mix(in srgb, #ffffff 8%, transparent); overflow: hidden; }
+  .pg-bar i {
+    display: block; height: 100%; width: 0%; border-radius: inherit;
+    background: linear-gradient(90deg, var(--pg-accent), #ff8a00);
+    transition: width 0.4s ease;
+  }
+  .pg-bar.indeterminate i { width: 35% !important; animation: pg-slide 1.4s ease-in-out infinite; }
+  @keyframes pg-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(320%); } }
+  .pg-facts { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
+  .pg-fact { background: color-mix(in srgb, #ffffff 4%, transparent); border-radius: 10px; padding: 0.6rem 0.75rem; }
+  .pg-fact span { display: block; color: var(--pg-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .pg-fact b { font-weight: 600; overflow-wrap: anywhere; font-size: 0.9rem; }
+  .pg-log {
+    margin: 0;
+    max-height: 22rem;
+    overflow: auto;
+    overscroll-behavior: contain;
+    background: #0c0c0c;
+    border: 1px solid var(--pg-line);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+    font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, monospace;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: #d4d4d8;
+  }
+  .pg-btn {
+    border: 1px solid var(--pg-line);
+    background: var(--pg-surface);
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-grid;
+    place-items: center;
+  }
+  .pg-btn:hover { background: color-mix(in srgb, #ffffff 8%, transparent); }
+  .pg-btn.danger { border-color: color-mix(in srgb, #f87171 55%, transparent); color: #fca5a5; }
+  .pg-btn:focus-visible { outline: 2px solid var(--pg-accent); outline-offset: 2px; }
+  .pg-muted { color: var(--pg-muted); font-size: 0.85rem; }
+  @media (prefers-reduced-motion: reduce) { .pg * { animation: none !important; transition: none !important; } }
+  @media (prefers-color-scheme: light) {
+    body { background: #f4f4f5 !important; color: #18181b; }
+    .card { background: #ffffff !important; border-color: rgba(0,0,0,0.08) !important; }
+    header { border-bottom-color: rgba(0,0,0,0.1) !important; }
+    nav a { color: #18181b; }
+    .pg {
+      --pg-surface: color-mix(in srgb, #18181b 4%, transparent);
+      --pg-line: color-mix(in srgb, #18181b 14%, transparent);
+      --pg-muted: color-mix(in srgb, #18181b 60%, transparent);
     }
-    .progress-title {
-        font-size: 2.5rem;
-        color: var(--primary-color);
-        text-align: center;
-        margin-bottom: 40px;
-        font-weight: 700;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    .status-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: var(--border-radius);
-        padding: 30px;
-        margin-bottom: 30px;
-        backdrop-filter: blur(10px);
-        box-shadow: var(--shadow);
-    }
-    .status-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 20px;
-        padding: 15px;
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 8px;
-        transition: all 0.3s ease;
-    }
-    .status-item:hover {
-        background: rgba(255, 255, 255, 0.05);
-        transform: translateX(5px);
-    }
-    .status-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 20px;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-    .status-icon.running {
-        background: linear-gradient(135deg, #00ff00, #00cc00);
-        color: white;
-        animation: pulse 2s infinite;
-    }
-    .status-icon.idle {
-        background: linear-gradient(135deg, #666, #999);
-        color: white;
-    }
-    .status-icon.path {
-        background: linear-gradient(135deg, #007bff, #0056b3);
-        color: white;
-    }
-    .status-label {
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.8);
-        margin-bottom: 5px;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
-    .status-value {
-        font-size: 1.1rem;
-        color: var(--text-color);
-        word-break: break-all;
-    }
-    .refresh-indicator {
-        text-align: center;
-        color: rgba(255, 255, 255, 0.7);
-        font-style: italic;
-        animation: fadeInOut 2s infinite;
-    }
-    .progress-bar-container {
-        margin-top: 30px;
-        position: relative;
-    }
-    .progress-bar {
-        width: 100%;
-        height: 8px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 4px;
-        overflow: hidden;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--primary-color), #ff4444);
-        border-radius: 4px;
-        width: 0%;
-        animation: progressAnimation 2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.1); opacity: 0.8; }
-    }
-    @keyframes fadeInOut {
-        0%, 100% { opacity: 0.5; }
-        50% { opacity: 1; }
-    }
-    @keyframes progressAnimation {
-        0% { width: 0%; }
-        50% { width: 70%; }
-        100% { width: 100%; }
-    }
-    @media (max-width: 768px) {
-        .progress-title {
-            font-size: 2rem;
-        }
-        .status-card {
-            padding: 20px;
-        }
-        .status-item {
-            flex-direction: column;
-            align-items: flex-start;
-            text-align: left;
-        }
-        .status-icon {
-            margin-bottom: 10px;
-            margin-right: 0;
-        }
-    }
+  }
 </style>
 
-<div class="progress-container">
-    <h1 class="progress-title">📊 Download Progress</h1>
-
-    <div class="status-card">
-        <div class="status-item">
-            <div class="status-icon {{ 'running' if status.running else 'idle' }}">
-                {% if status.running %}⚡{% else %}⏸️{% endif %}
-            </div>
-            <div>
-                <div class="status-label">Status</div>
-                <div class="status-value">{{ status.message }}</div>
-            </div>
-        </div>
-
-        <div class="status-item">
-            <div class="status-icon path">📁</div>
-            <div>
-                <div class="status-label">Storage Path</div>
-                <div class="status-value">{{ status.path }}</div>
-            </div>
-        </div>
-
-        {% if status.running %}
-            <div class="progress-bar-container">
-                <div class="progress-bar">
-                    <div class="progress-fill"></div>
-                </div>
-            </div>
-            <meta http-equiv="refresh" content="5">
-            <p class="refresh-indicator">🔄 Auto-refreshing every 5 seconds...</p>
-        {% else %}
-            <p class="refresh-indicator">⏸️ Download idle - no active processes</p>
-        {% endif %}
+<div class="pg">
+  <div class="pg-head">
+    <h1 class="pg-title">Progress</h1>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+      <a class="pg-btn" href="/files">📁 Files</a>
+      <a class="pg-btn" href="/">＋ New download</a>
+      <button class="pg-btn danger" type="button" id="pg-stop" hidden>■ Stop</button>
     </div>
+  </div>
+
+  <section class="pg-panel" aria-label="BPM downloader">
+    <div class="pg-state">
+      <span class="pg-dot" id="pg-dot"></span>
+      <span id="pg-msg">{{ bpm_status.message }}</span>
+      <span class="pg-muted" id="pg-pct"></span>
+    </div>
+    <div class="pg-bar" id="pg-bar"><i></i></div>
+    <div class="pg-facts" id="pg-facts"></div>
+    <pre class="pg-log" id="pg-log" aria-live="polite" aria-label="dlallbpm output">{{ bpm_status.log | join('\n') }}</pre>
+    <p class="pg-muted" id="pg-hint">Output from dlallbpm.py, live.</p>
+  </section>
+
+  <section class="pg-panel" aria-label="Quick downloader">
+    <div class="pg-state">
+      <span class="pg-dot {{ 'on' if status.running else '' }}" id="pg-dot2"></span>
+      <span id="pg-msg2">{{ status.message or 'Quick downloader idle' }}</span>
+    </div>
+    <div class="pg-facts">
+      <div class="pg-fact"><span>Saving to</span><b id="pg-path2">{{ status.path or '—' }}</b></div>
+    </div>
+  </section>
 </div>
+
+<script type="application/json" id="pg-data">{{ bpm_status | tojson }}</script>
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  let job = JSON.parse($("pg-data").textContent || "{}");
+
+  const escape = (text) => {
+    const node = document.createElement("div");
+    node.textContent = text;
+    return node.innerHTML;
+  };
+
+  const elapsed = (seconds) => {
+    if (!seconds) return "—";
+    const m = Math.floor(seconds / 60), s = seconds % 60;
+    return m ? `${m}m ${s}s` : `${s}s`;
+  };
+
+  const paint = (classic) => {
+    const dot = $("pg-dot");
+    dot.className = "pg-dot" + (job.running ? " on"
+      : job.phase === "done" ? " done"
+      : job.phase === "error" ? " err" : "");
+    $("pg-msg").textContent = job.message || "No download running";
+    $("pg-pct").textContent = job.percent != null && job.running ? `${job.percent}%` : "";
+
+    const bar = $("pg-bar");
+    bar.classList.toggle("indeterminate", Boolean(job.running) && job.percent == null);
+    bar.firstElementChild.style.width = `${job.running || job.phase === "done" ? (job.percent ?? 0) : 0}%`;
+
+    const facts = [];
+    if (job.output_dir) facts.push(["Saving to", job.output_dir]);
+    if (job.current_file) facts.push(["Current file", job.current_file]);
+    if (job.speed) facts.push(["Speed", job.speed]);
+    if (job.eta) facts.push(["ETA", job.eta]);
+    if (job.started_at) facts.push(["Elapsed", elapsed(job.elapsed)]);
+    if (job.summary) {
+      facts.push(["Kept", String(job.summary.kept ?? 0)]);
+      facts.push(["Dropped (out of range)", String(job.summary.dropped ?? 0)]);
+      facts.push(["No BPM detected", String(job.summary.failed ?? 0)]);
+    }
+    for (const [key, value] of Object.entries(job.options || {})) facts.push([key, value]);
+    $("pg-facts").innerHTML = facts
+      .map(([key, value]) => `<div class="pg-fact"><span>${escape(key)}</span><b>${escape(value)}</b></div>`)
+      .join("");
+
+    const log = $("pg-log");
+    const pinned = log.scrollTop + log.clientHeight >= log.scrollHeight - 24;
+    const text = (job.log || []).join("\n");
+    if (log.textContent !== text) {
+      log.textContent = text || "Nothing logged yet.";
+      if (pinned) log.scrollTop = log.scrollHeight;
+    }
+    $("pg-stop").hidden = !job.running;
+
+    if (classic) {
+      $("pg-dot2").className = "pg-dot" + (classic.running ? " on" : "");
+      $("pg-msg2").textContent = classic.message || "Quick downloader idle";
+      $("pg-path2").textContent = classic.path || "—";
+    }
+  };
+
+  $("pg-stop").addEventListener("click", async (event) => {
+    event.currentTarget.disabled = true;
+    try {
+      const response = await fetch("/cancel", { method: "POST", headers: { Accept: "application/json" } });
+      if (response.ok) job = (await response.json()).bpm;
+      paint();
+    } finally {
+      setTimeout(() => { event.target.disabled = false; }, 1500);
+    }
+  });
+
+  let idleTicks = 0;
+  const poll = async () => {
+    if (document.hidden) return;
+    try {
+      const response = await fetch("/api/progress", { headers: { Accept: "application/json" } });
+      if (!response.ok) return;
+      const data = await response.json();
+      job = data.bpm;
+      paint(data.classic);
+      idleTicks = job.running || data.classic.running ? 0 : idleTicks + 1;
+    } catch { /* the app may be restarting */ }
+  };
+  // Poll briskly while something is running, then back off to a slow heartbeat.
+  setInterval(() => { if (idleTicks < 8 || Date.now() % 15000 < 2000) poll(); }, 2000);
+
+  paint();
+})();
+</script>
 {% endblock %}

@@ -1,153 +1,341 @@
 {% extends "base.html" %}
 {% block content %}
 <style>
-    .download-form {
-        max-width: 600px;
-        margin: 0 auto;
+  .dl {
+    --dl-surface: color-mix(in srgb, #ffffff 4%, transparent);
+    --dl-line: color-mix(in srgb, #ffffff 12%, transparent);
+    --dl-muted: color-mix(in srgb, #ffffff 58%, transparent);
+    --dl-accent: var(--primary-color, #ff0000);
+    container-type: inline-size;
+  }
+  .dl-title {
+    font-size: clamp(1.6rem, 1.2rem + 2vw, 2.3rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.35rem;
+  }
+  .dl-sub { color: var(--dl-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
+  .dl-sub code {
+    background: var(--dl-surface);
+    border: 1px solid var(--dl-line);
+    border-radius: 6px;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.82rem;
+  }
+  .dl-tabs {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: var(--dl-surface);
+    border: 1px solid var(--dl-line);
+    border-radius: 999px;
+    margin-bottom: 1.5rem;
+  }
+  .dl-tab {
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .dl-tab[aria-selected="true"] {
+    background: color-mix(in srgb, var(--dl-accent) 30%, transparent);
+    font-weight: 600;
+  }
+  .dl-tab:focus-visible { outline: 2px solid var(--dl-accent); outline-offset: 2px; }
+
+  .dl-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+  .dl-field { display: grid; gap: 0.4rem; }
+  .dl-field.wide { grid-column: 1 / -1; }
+  .dl-field label { font-size: 0.85rem; font-weight: 600; }
+  .dl-field .hint { color: var(--dl-muted); font-size: 0.75rem; }
+  .dl-input, .dl-textarea, .dl-select {
+    width: 100%;
+    background: var(--dl-surface);
+    border: 1px solid var(--dl-line);
+    border-radius: 10px;
+    color: inherit;
+    font: inherit;
+    font-size: 0.95rem;
+    padding: 0.7rem 0.85rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .dl-textarea { min-height: 5.5rem; resize: vertical; }
+  .dl-input:focus, .dl-textarea:focus, .dl-select:focus {
+    outline: none;
+    border-color: var(--dl-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dl-accent) 22%, transparent);
+  }
+  .dl-checks { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+  .dl-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--dl-surface);
+    border: 1px solid var(--dl-line);
+    border-radius: 999px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .dl-check:has(input:checked) {
+    border-color: color-mix(in srgb, var(--dl-accent) 55%, transparent);
+    background: color-mix(in srgb, var(--dl-accent) 18%, transparent);
+  }
+  .dl-check input { accent-color: var(--dl-accent); width: 1rem; height: 1rem; }
+  details.dl-more {
+    border: 1px solid var(--dl-line);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    margin-top: 1rem;
+    background: var(--dl-surface);
+  }
+  details.dl-more summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+  details.dl-more[open] summary { margin-bottom: 1rem; }
+  .dl-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-top: 1.5rem; }
+  .dl-submit {
+    flex: 1 1 14rem;
+    padding: 0.9rem 1.5rem;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--dl-accent), #cc0000);
+    color: #fff;
+    font: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+  }
+  .dl-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(255, 0, 0, 0.35); }
+  .dl-ghost {
+    padding: 0.9rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid var(--dl-line);
+    background: var(--dl-surface);
+    color: inherit;
+    font: inherit;
+    text-decoration: none;
+    display: inline-grid;
+    place-items: center;
+  }
+  .dl-note {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--dl-line);
+    background: var(--dl-surface);
+    color: var(--dl-muted);
+    font-size: 0.82rem;
+  }
+  .dl-warn {
+    border-color: color-mix(in srgb, #f59e0b 55%, transparent);
+    background: color-mix(in srgb, #f59e0b 14%, transparent);
+    color: #fde68a;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dl *, .dl *::before { transition-duration: 0.001ms !important; }
+  }
+  @media (prefers-color-scheme: light) {
+    body { background: #f4f4f5 !important; color: #18181b; }
+    .card { background: #ffffff !important; border-color: rgba(0,0,0,0.08) !important; }
+    header { border-bottom-color: rgba(0,0,0,0.1) !important; }
+    nav a { color: #18181b; }
+    .dl {
+      --dl-surface: color-mix(in srgb, #18181b 4%, transparent);
+      --dl-line: color-mix(in srgb, #18181b 14%, transparent);
+      --dl-muted: color-mix(in srgb, #18181b 60%, transparent);
     }
-    .form-title {
-        font-size: 2.5rem;
-        color: var(--primary-color);
-        text-align: center;
-        margin-bottom: 40px;
-        font-weight: 700;
-        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    .form-group {
-        margin-bottom: 30px;
-    }
-    .form-label {
-        display: block;
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin-bottom: 10px;
-        color: var(--text-color);
-    }
-    .form-input {
-        width: 100%;
-        padding: 15px 20px;
-        border: 2px solid rgba(255, 255, 255, 0.1);
-        border-radius: var(--border-radius);
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--text-color);
-        font-size: 1rem;
-        transition: all 0.3s ease;
-        backdrop-filter: blur(10px);
-    }
-    .form-input:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.2);
-        transform: translateY(-2px);
-    }
-    .form-input::placeholder {
-        color: rgba(255, 255, 255, 0.5);
-    }
-    .submit-btn {
-        width: 100%;
-        padding: 18px 30px;
-        background: linear-gradient(135deg, var(--primary-color) 0%, #cc0000 100%);
-        color: white;
-        border: none;
-        border-radius: var(--border-radius);
-        font-size: 1.2rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: var(--shadow);
-        position: relative;
-        overflow: hidden;
-    }
-    .submit-btn:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 30px rgba(255, 0, 0, 0.4);
-    }
-    .submit-btn:active {
-        transform: translateY(-1px);
-    }
-    .submit-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-        transition: left 0.6s;
-    }
-    .submit-btn:hover::before {
-        left: 100%;
-    }
-    .form-note {
-        text-align: center;
-        margin-top: 20px;
-        color: rgba(255, 255, 255, 0.7);
-        font-size: 0.9rem;
-    }
-    @media (max-width: 768px) {
-        .form-title {
-            font-size: 2rem;
-        }
-        .form-input {
-            padding: 12px 16px;
-        }
-        .submit-btn {
-            padding: 15px 25px;
-            font-size: 1.1rem;
-        }
-    }
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
+    .dl-warn { color: #92400e; }
+  }
 </style>
 
-<div class="download-form">
-    <h1 class="form-title">🚀 Download YouTube Playlist</h1>
-    <form method="POST">
-        <div class="form-group">
-            <label class="form-label" for="url">YouTube Playlist URL</label>
-            <input type="url" id="url" name="url" class="form-input" placeholder="https://www.youtube.com/playlist?list=..." required>
+<div class="dl">
+  <h1 class="dl-title">Download</h1>
+  <p class="dl-sub">
+    BPM mode runs <code>dlallbpm.py</code> — it downloads, detects the tempo of every
+    track, renames each keeper to <code>&lt;bpm&gt;_title</code> and drops anything outside
+    your range. Finished files land in <code>{{ bpm_folder }}</code> and show up under
+    <a href="/files">Files</a>.
+  </p>
+
+  {% if not bpm_available %}
+  <div class="dl-note dl-warn">
+    dlallbpm.py was not found at <code>{{ bpm_script }}</code>. Set <code>DLALLBPM_PATH</code>
+    in <code>.env</code> to point at it, or use Quick download below.
+  </div>
+  {% endif %}
+
+  <div class="dl-tabs" role="tablist" aria-label="Downloader">
+    <button class="dl-tab" type="button" id="tab-bpm" role="tab" aria-selected="true" aria-controls="panel-bpm">
+      🎚️ BPM downloader
+    </button>
+    <button class="dl-tab" type="button" id="tab-classic" role="tab" aria-selected="false" aria-controls="panel-classic">
+      ⚡ Quick download
+    </button>
+  </div>
+
+  <form method="POST" id="dl-form">
+    <input type="hidden" name="engine" id="engine" value="bpm">
+
+    <!-- ------------------------------ BPM ------------------------------ -->
+    <section id="panel-bpm" role="tabpanel" aria-labelledby="tab-bpm">
+      <div class="dl-grid">
+        <div class="dl-field wide">
+          <label for="bpm-url">Links</label>
+          <textarea class="dl-textarea" id="bpm-url" name="url"
+                    placeholder="https://www.youtube.com/playlist?list=…&#10;https://www.youtube.com/@channel/videos&#10;…or the path to a .txt file of links"></textarea>
+          <span class="hint">One or more videos, playlists, channels or profile pages — dlallbpm reads them all.
+            YouTube returns <strong>403 Forbidden</strong> without a signed-in session, so leave cookies on.</span>
         </div>
 
-        
-        <script>
-                async function download() {
-                const url = document.getElementById("url").value;
+        <div class="dl-field">
+          <label for="bpm-folder">Folder name</label>
+          <input class="dl-input" id="bpm-folder" name="folder" placeholder="downloads" value="downloads">
+          <span class="hint">Created under the BPM library.</span>
+        </div>
 
-                const response = await fetch("/download", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ url })
-                });
+        <div class="dl-field">
+          <label for="bpm-range">BPM range</label>
+          <input class="dl-input" id="bpm-range" name="bpm_range" placeholder="94-105" inputmode="numeric">
+          <span class="hint">Blank keeps everything and still tags each file with its BPM.</span>
+        </div>
 
-                const blob = await response.blob();
-                const a = document.createElement("a");
-                a.href = URL.createObjectURL(blob);
-                a.download = "video.mp4";
-                a.click();
-                }
-        </script>
-        <script>
-            // Get downloads folder from data attribute
-            const downloadsFolderData = document.getElementById('downloads-folder-data');
-            const DOWNLOADS_FOLDER = downloadsFolderData ? downloadsFolderData.getAttribute('data-path') : '';
+        <div class="dl-field">
+          <label for="bpm-top">Top N after ranking</label>
+          <input class="dl-input" id="bpm-top" name="top_count" placeholder="all" inputmode="numeric">
+          <span class="hint">Blank downloads every video on the page.</span>
+        </div>
+      </div>
 
-            // Fill custom input with default when requested
-            document.addEventListener('DOMContentLoaded', function() {
-                const useBtn = document.getElementById('use-default-btn');
-                const customInput = document.getElementById('custom_folder');
-                if (useBtn && customInput && DOWNLOADS_FOLDER) {
-                    useBtn.addEventListener('click', function() {
-                        customInput.value = DOWNLOADS_FOLDER;
-                        alert('Default downloads path filled');
-                    });
-                }
-            });
-        </script>
+      <div class="dl-checks" style="margin-top: 1rem;">
+        <label class="dl-check"><input type="checkbox" name="audio_only" value="1"> 🎵 Audio only (mp3)</label>
+        <label class="dl-check"><input type="checkbox" name="use_cookies" value="1" checked> 🍪 Use Chrome session cookies</label>
+        <label class="dl-check"><input type="checkbox" name="new_music_only" value="1"> 🆕 New releases only</label>
+        <label class="dl-check"><input type="checkbox" name="dedupe" value="1"> 🧹 Skip duplicate songs</label>
+        <label class="dl-check"><input type="checkbox" name="top_per_link" value="1"> 🔢 Top N per link</label>
+      </div>
 
-        <button onclick="download()" type="submit" class="submit-btn">⚡ Start Download</button>
-    </form>
-    <p class="form-note">Enter a valid YouTube playlist URL and choose a folder name to begin downloading.</p>
+      <details class="dl-more">
+        <summary>More filters</summary>
+        <div class="dl-grid">
+          <div class="dl-field">
+            <label for="f-date">Released within</label>
+            <input class="dl-input" id="f-date" name="date_filter" placeholder="1 month">
+          </div>
+          <div class="dl-field">
+            <label for="f-duration">Duration</label>
+            <input class="dl-input" id="f-duration" name="duration_filter" placeholder="2-5 min">
+          </div>
+          <div class="dl-field">
+            <label for="f-artist">Artists</label>
+            <input class="dl-input" id="f-artist" name="artist_filters" placeholder="comma,separated">
+          </div>
+          <div class="dl-field">
+            <label for="f-genre">Genres</label>
+            <input class="dl-input" id="f-genre" name="genre_filters" placeholder="afrobeats, amapiano">
+          </div>
+          <div class="dl-field">
+            <label for="f-mood">Moods</label>
+            <input class="dl-input" id="f-mood" name="mood_filters" placeholder="happy, chill">
+          </div>
+          <div class="dl-field">
+            <label for="f-country">Countries</label>
+            <input class="dl-input" id="f-country" name="country_filters" placeholder="Kenya, Nigeria">
+          </div>
+          <div class="dl-field wide">
+            <label for="f-cookie">Cookie file</label>
+            <input class="dl-input" id="f-cookie" name="cookie_file" placeholder="/path/to/cookies.txt">
+            <span class="hint">Optional. A Netscape-format export; blank uses the logged-in Chrome profile.</span>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ---------------------------- classic ---------------------------- -->
+    <section id="panel-classic" role="tabpanel" aria-labelledby="tab-classic" hidden>
+      <div class="dl-grid">
+        <div class="dl-field wide">
+          <label for="classic-url">YouTube URL</label>
+          <input class="dl-input" type="url" id="classic-url" name="url" disabled
+                 placeholder="https://www.youtube.com/playlist?list=…">
+          <span class="hint">Single video or playlist, capped at 480p, no BPM scan.</span>
+        </div>
+        <div class="dl-field">
+          <label for="classic-storage">Category</label>
+          <select class="dl-select" id="classic-storage" name="storage" disabled>
+            <option value="general">general</option>
+            <option value="music">music</option>
+            <option value="videos">videos</option>
+            <option value="podcasts">podcasts</option>
+          </select>
+        </div>
+        <div class="dl-field">
+          <label for="custom_folder">Custom folder</label>
+          <input class="dl-input" id="custom_folder" name="custom_folder" disabled placeholder="optional">
+          <span class="hint">Saved under <code>{{ downloads_folder }}</code>.</span>
+        </div>
+      </div>
+      <div class="dl-checks" style="margin-top: 1rem;">
+        <label class="dl-check">
+          <input type="checkbox" name="use_cookies" value="1" checked disabled> 🍪 Use Chrome session cookies
+        </label>
+      </div>
+    </section>
+
+    <div class="dl-actions">
+      <button class="dl-submit" type="submit" id="dl-go">⚡ Start download</button>
+      <a class="dl-ghost" href="/progress">View progress</a>
+      <a class="dl-ghost" href="/files">Browse files</a>
+    </div>
+  </form>
+
+  {% if status.running %}
+  <div class="dl-note">
+    A BPM download is already running — {{ status.message }}.
+    <a href="/progress">Watch it</a> or stop it there before starting another.
+  </div>
+  {% endif %}
 </div>
+
+<script>
+(() => {
+  "use strict";
+  const panels = {
+    bpm: document.getElementById("panel-bpm"),
+    classic: document.getElementById("panel-classic"),
+  };
+  const tabs = {
+    bpm: document.getElementById("tab-bpm"),
+    classic: document.getElementById("tab-classic"),
+  };
+  const engine = document.getElementById("engine");
+
+  const select = (name) => {
+    engine.value = name;
+    for (const [key, panel] of Object.entries(panels)) {
+      const active = key === name;
+      panel.hidden = !active;
+      tabs[key].setAttribute("aria-selected", String(active));
+      // Disabled inputs are not submitted, so the two panels never collide
+      // over the shared "url" field name.
+      panel.querySelectorAll("input, select, textarea").forEach((field) => {
+        field.disabled = !active;
+      });
+    }
+    document.getElementById("dl-go").textContent =
+      name === "bpm" ? "🎚️ Download & scan BPM" : "⚡ Start download";
+    try { localStorage.setItem("ytdl.engine", name); } catch { /* private mode */ }
+  };
+
+  Object.entries(tabs).forEach(([name, tab]) => tab.addEventListener("click", () => select(name)));
+
+  let saved = "bpm";
+  try { saved = localStorage.getItem("ytdl.engine") || "bpm"; } catch { /* private mode */ }
+  select(panels[saved] ? saved : "bpm");
+})();
+</script>
 {% endblock %}

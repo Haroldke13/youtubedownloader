@@ -1,19 +1,35 @@
 # youtubedownloader
 
-Flask web UI over yt-dlp for downloading YouTube playlists and single videos to a server-side folder.
+Flask web UI over yt-dlp for downloading YouTube playlists and single videos to a server-side folder, plus a front end for the standalone `dlallbpm.py` BPM downloader.
 
 ## What it does
 
-One file, `app.py` (265 lines), serves four routes:
+`app.py` serves the web routes, `bpm_engine.py` bridges to `dlallbpm.py`:
 
 | Route | Method | Purpose |
 | --- | --- | --- |
-| `/` | GET, POST | Form to submit a URL; POST starts a background download and redirects to `/progress` |
-| `/progress` | GET | Renders the current global download status |
-| `/files` | GET | Lists every file found under the download directory (`os.walk`) |
+| `/` | GET, POST | Two-tab form: BPM downloader (`dlallbpm.py`) or the built-in quick downloader. POST starts a background job and redirects to `/progress` |
+| `/progress` | GET | Live status and console output for both downloaders |
+| `/files` | GET | Media library browser: search, filter by source/type/BPM, sort, play in-page, download |
+| `/media/<root>/<path>` | GET | Streams one library file (range requests supported); `?dl=1` forces a download |
+| `/api/files` | GET | JSON library listing, used by the browser's rescan |
+| `/api/progress` | GET | JSON status of both downloaders, polled by `/files` and `/progress` |
+| `/cancel` | POST | Asks a running BPM download to stop; whatever already downloaded is still BPM-scanned and kept |
 | `/download` | POST | Separate JSON/form endpoint: downloads one video and returns it as an attachment |
 
-Two different download paths exist:
+Three download paths exist:
+
+- **BPM path** (`bpm_engine.job`, used by `POST /` with `engine=bpm`).
+  Loads `dlallbpm.py` by path and calls its `download_page()` on a daemon
+  thread. `dlallbpm` stages downloads in a temp directory, detects the tempo of
+  every media file (aubio if installed, an ffmpeg energy/autocorrelation
+  fallback otherwise), drops anything outside the requested BPM range and moves
+  the keepers to `<BPM library>/<folder>/<uploader>/<playlist>/<bpm>_<title>.<ext>`.
+  Nothing in `dlallbpm.py` is modified: the bridge swaps its module-level
+  `progress_hook` for one that feeds a status dict, tees the worker thread's
+  stdout and stderr into a ring buffer for the web console, and restores both
+  when the job ends. Cancelling raises `KeyboardInterrupt` inside the hook,
+  which `dlallbpm` already handles by scanning and keeping what it has.
 
 - **Playlist / background path** (`download_playlist`, used by `POST /`).
   Runs `yt_dlp.YoutubeDL` on a daemon thread with
@@ -81,11 +97,17 @@ Environment variables:
 
 | Variable | Effect | Default |
 | --- | --- | --- |
-| `DOWNLOAD_DIR` | Base download directory | Android path if detected, else `~/Downloads/YTDownloads` |
+| `DOWNLOAD_DIR` | Base directory for the built-in downloader, and the second source in the Files browser. Keep it dedicated — everything under it is listed | Android path if detected, else `~/Downloads/YTDownloads` |
 | `HOST` | Bind address | `0.0.0.0` |
 | `PORT` | Bind port | `5000` |
 | `DEBUG` | `true` enables Flask debug mode | `False` |
-| `ELECTRON_APP` | Read in `/files` but both branches are identical, so it currently does nothing | unset |
+| `DLALLBPM_PATH` | Path to `dlallbpm.py` | `~/Desktop/PROJECT/personal/youtube-playlist-suite/YOUTUBE PLAYLISTS/dlallbpm.py` |
+| `BPM_DOWNLOAD_DIR` | Where the BPM library lives; must match what `dlallbpm.py` writes to | Android path if detected, else `~/Downloads/Universal_Downloads` |
+| `COOKIES_BROWSER` | Browser whose cookies yt-dlp reuses when `cookies.txt` is empty | `chrome` |
+
+The BPM downloader additionally needs `ffmpeg` (always) and benefits from
+`aubio` + `numpy` (better tempo detection) and a JS runtime such as `node`
+(YouTube extraction). `dlallbpm.py` detects the JS runtime itself.
 
 Because `gunicorn` is in the requirements, presumably the intent was:
 
@@ -116,29 +138,25 @@ Confirmed bugs and dead code:
   no Node source, and no Electron dependency anywhere in the repository. The only
   remaining trace is the inert `ELECTRON_APP` check in `/files`. This README
   replaces those claims.
-- **`cookies.txt` is never used.** `ydl_opts` contains `"cookies.txt": "cookies.txt"`,
-  but yt-dlp's option is `cookiefile`; the unknown key is carried in the params
-  dict and ignored, so `cookiefile` stays `None`. Confirmed by inspecting
-  `YoutubeDL.params` directly. The committed `cookies.txt` is also 0 bytes.
-  Age-restricted or sign-in-required videos will therefore fail.
-- **The submit button fires two conflicting actions.** In `templates/index.html`
-  the button is both `onclick="download()"` (JSON `fetch` to `/download`) and
-  `type="submit"` (normal form POST to `/`), so a click triggers the single-video
-  endpoint and the playlist endpoint at once.
-- **The folder picker UI is missing from the live template.** `index.html`'s
-  inline script looks up `#custom_folder` and `#use-default-btn`, but those
-  elements exist only in the unused `index copy.html`. As shipped, the form
-  posts only `url`, so every download lands in the `general` subfolder and the
-  whole `storage`/`custom_folder` branch in `app.py` is unreachable.
-- **The startup error handler would itself crash.** `app.py` does
-  `from flask import ... logging ...` and then calls `logging.error(...)` — but
-  `flask.logging` has no `error` attribute, so if `app.run()` ever raised, the
-  handler would raise `AttributeError` instead of logging. Confirmed by
-  inspecting the module.
+- ~~**`cookies.txt` is never used.**~~ Fixed: the bogus `"cookies.txt"` key is
+  gone. `cookie_opts()` now sets `cookiefile` when the repo's `cookies.txt` is
+  non-empty and falls back to `cookiesfrombrowser` (`COOKIES_BROWSER`, default
+  `chrome`) otherwise, and `js_runtime_opts()` passes a detected JS runtime.
+  Both download paths use them. The committed `cookies.txt` is still 0 bytes, so
+  in practice the browser session is what gets used.
+- ~~**The submit button fires two conflicting actions.**~~ Fixed: the form is a
+  plain POST to `/`, and the `fetch`-to-`/download` script is gone. `/download`
+  itself still exists as an API endpoint.
+- ~~**The folder picker UI is missing from the live template.**~~ Fixed: the
+  quick-download tab now posts `storage` and `custom_folder`, so that branch in
+  `app.py` is reachable.
+- ~~**The startup error handler would itself crash.**~~ Fixed: `app.py` imports
+  the standard library `logging` instead of `flask.logging`.
 - The `POST /download` temp files under `temp_downloads/` accumulate forever;
   nothing cleans them up.
-- No authentication on any route, and `/files` walks and lists the entire
-  download tree.
+- Every route is behind `local_admin_auth.protect_app`, a WSGI login gate whose
+  account data lives outside the repository. `/files` lists only media files,
+  from the BPM library and the app's own download directory.
 - **Downloaded media is committed to the repository.** `downloads/` holds 41 MB
   of copyrighted commercial music videos (`.mp4`, `.webm.part`) pulled from
   YouTube, plus `downloaded.txt`, the yt-dlp archive of the video IDs that were
@@ -146,9 +164,25 @@ Confirmed bugs and dead code:
   belongs in a public repository; `downloads/.keep` suggests the intent was to
   track the empty folder only.
 
-Not verified here:
+Verified for the BPM integration (2026-09-20):
 
-- An actual download against YouTube. TODO: verify the playlist path, the 480p
-  cap, and the ffmpeg merge end to end.
+- `dlallbpm.py` imports cleanly by path, and a real download through
+  `bpm_engine.job` against a locally served 120 BPM click track produced
+  `122_click track.mp3` in the BPM library — download, aubio tempo detection,
+  BPM-range filtering, rename and library listing all end to end.
+- Stdout *and* stderr from the worker thread reach the web console, including
+  yt-dlp's own `ERROR:` lines (yt-dlp writes through `stream.buffer`, so the tee
+  proxies the binary buffer as well as `write`).
+- Cancel, double-start refusal, and hook/stream restoration after failures are
+  covered by the stub-module test in the scratchpad.
+- `/media` refuses path traversal, unknown roots and non-media files, and
+  answers range requests with `206`.
 
-LICENSE: GNU General Public License v3.
+- **A real YouTube download, with and without cookies.** Without a session,
+  YouTube serves the manifest but refuses the media URLs (`HTTP Error 403`,
+  surfacing as `ffmpeg exited with code 8`). With `cookiesfrombrowser=("chrome",)`
+  plus a JS runtime, the same video downloads and muxes fine. That is why the
+  cookie switch is on by default in both tabs, and why `dlallbpm.py`'s own
+  `configure_cookie_auth()` fallback to the Chrome session matters.
+
+LICENSE: Proprietary. Copyright © 2026 Joel Harold Onyango, all rights reserved.
